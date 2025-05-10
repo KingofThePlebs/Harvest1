@@ -1,69 +1,76 @@
 "use client";
 
 import type { FC } from 'react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import type { Crop, PlotState } from '@/types';
 import { CROPS_DATA } from '@/config/crops';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Leaf, Zap } from 'lucide-react'; // Zap for harvest ready
+import { Leaf, Zap } from 'lucide-react'; 
 
 interface CropPlotProps {
   plot: PlotState;
   onPlant: (plotId: string, cropId: string) => void;
   onHarvest: (plotId: string, cropId: string) => void;
   selectedCropToPlantId?: string;
+  getEffectiveCropGrowTime: (baseTime: number) => number;
 }
 
-const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedCropToPlantId }) => {
+const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedCropToPlantId, getEffectiveCropGrowTime }) => {
   const [progress, setProgress] = useState(0);
-  const [isReadyToHarvest, setIsReadyToHarvest] = useState(false);
+  const [isReadyToHarvest, setIsReadyToHarvest] = useState(plot.isHarvestable || false);
 
   const plantedCrop = useMemo(() => {
     return plot.cropId ? CROPS_DATA.find(c => c.id === plot.cropId) : undefined;
   }, [plot.cropId]);
 
+  const effectiveGrowTime = useMemo(() => {
+    if (plantedCrop) {
+      return getEffectiveCropGrowTime(plantedCrop.growTime);
+    }
+    return 0;
+  }, [plantedCrop, getEffectiveCropGrowTime]);
+
   useEffect(() => {
     let intervalId: NodeJS.Timeout | undefined;
 
-    if (plantedCrop && plot.plantTime) {
+    if (plantedCrop && plot.plantTime && !isReadyToHarvest) {
       const updateGrowth = () => {
         const elapsedTime = Date.now() - (plot.plantTime ?? 0);
-        const currentProgress = Math.min(100, (elapsedTime / plantedCrop.growTime) * 100);
+        const currentProgress = Math.min(100, (elapsedTime / effectiveGrowTime) * 100);
         setProgress(currentProgress);
 
         if (currentProgress >= 100) {
           setIsReadyToHarvest(true);
           if (intervalId) clearInterval(intervalId);
-        } else {
-          setIsReadyToHarvest(false);
         }
       };
-
-      updateGrowth(); // Initial check
-      // The `progress` variable here refers to the state value from the render cycle
-      // that set up this effect. If updateGrowth() just set progress to 100 via setProgress,
-      // this `progress` value might be stale (e.g., 0).
-      // The interval will run once, updateGrowth() will be called, find progress is 100,
-      // set isReadyToHarvest, and clear itself. This is slightly inefficient but avoids the loop.
-      if (progress < 100) { 
-        intervalId = setInterval(updateGrowth, 100); // Update every 100ms
+      
+      updateGrowth(); 
+      if (!isReadyToHarvest) { // check again because updateGrowth might have set it
+         intervalId = setInterval(updateGrowth, 100);
       }
-    } else {
+
+    } else if (!plantedCrop) {
       setProgress(0);
       setIsReadyToHarvest(false);
+    } else if (isReadyToHarvest) {
+      setProgress(100); // Ensure progress is 100 if already harvestable
     }
+
 
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [plantedCrop, plot.plantTime]); // Removed `progress` from dependencies
+  }, [plantedCrop, plot.plantTime, isReadyToHarvest, effectiveGrowTime]);
 
   const handlePlotClick = () => {
     if (isReadyToHarvest && plantedCrop) {
       onHarvest(plot.id, plantedCrop.id);
+      setIsReadyToHarvest(false); // Reset after harvest
+      setProgress(0);
     } else if (!plantedCrop && selectedCropToPlantId) {
       onPlant(plot.id, selectedCropToPlantId);
     }

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import type { PlotState, InventoryItem, Crop } from '@/types';
+import type { PlotState, InventoryItem, Crop, UpgradesState, UpgradeId } from '@/types';
 import { CROPS_DATA } from '@/config/crops';
+import { UPGRADES_DATA } from '@/config/upgrades';
 import GameHeader from '@/components/game/GameHeader';
 import PlantingArea from '@/components/game/PlantingArea';
 import AvailableCropsPanel from '@/components/game/AvailableCropsPanel';
@@ -21,19 +22,41 @@ const generateInitialPlots = (count: number): PlotState[] => {
   }));
 };
 
+const initialUpgradesState: UpgradesState = {
+  fertilizer: false,
+  negotiationSkills: false,
+  bulkDiscount: false,
+};
+
 export default function HarvestClickerPage() {
   const [plots, setPlots] = useState<PlotState[]>(() => generateInitialPlots(NUM_PLOTS));
   const [currency, setCurrency] = useState<number>(INITIAL_CURRENCY);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [selectedCropToPlantId, setSelectedCropToPlantId] = useState<string | undefined>(undefined);
+  const [upgrades, setUpgrades] = useState<UpgradesState>(initialUpgradesState);
   const { toast } = useToast();
+
+  const getEffectiveCropSeedPrice = useCallback((basePrice: number) => {
+    return upgrades.bulkDiscount ? Math.ceil(basePrice * 0.9) : basePrice;
+  }, [upgrades.bulkDiscount]);
+
+  const getEffectiveCropSellPrice = useCallback((basePrice: number) => {
+    return upgrades.negotiationSkills ? Math.floor(basePrice * 1.15) : basePrice;
+  }, [upgrades.negotiationSkills]);
+
+  const getEffectiveCropGrowTime = useCallback((baseTime: number) => {
+    return upgrades.fertilizer ? baseTime * 0.8 : baseTime;
+  }, [upgrades.fertilizer]);
+
 
   const handleSelectCrop = (cropId: string) => {
     setSelectedCropToPlantId(cropId);
     const crop = CROPS_DATA.find(c => c.id === cropId);
+    if (!crop) return;
+    const effectiveSeedPrice = getEffectiveCropSeedPrice(crop.seedPrice);
     toast({
-      title: `${crop?.name || 'Crop'} Selected`,
-      description: `Cost: ${crop?.seedPrice} gold. Click on an empty plot to plant.`,
+      title: `${crop.name} Selected`,
+      description: `Cost: ${effectiveSeedPrice} gold. Click on an empty plot to plant.`,
     });
   };
 
@@ -41,30 +64,32 @@ export default function HarvestClickerPage() {
     const cropToPlant = CROPS_DATA.find(c => c.id === cropIdToPlant);
     if (!cropToPlant) return;
 
-    if (currency < cropToPlant.seedPrice) {
+    const effectiveSeedPrice = getEffectiveCropSeedPrice(cropToPlant.seedPrice);
+
+    if (currency < effectiveSeedPrice) {
       toast({
         title: "Not Enough Gold!",
-        description: `You need ${cropToPlant.seedPrice} gold to plant ${cropToPlant.name}.`,
+        description: `You need ${effectiveSeedPrice} gold to plant ${cropToPlant.name}.`,
         variant: "destructive",
       });
-      setSelectedCropToPlantId(undefined); // Deselect if cannot afford
+      setSelectedCropToPlantId(undefined);
       return;
     }
 
     setPlots(prevPlots =>
       prevPlots.map(p =>
         p.id === plotId
-          ? { ...p, cropId: cropIdToPlant, plantTime: Date.now() }
+          ? { ...p, cropId: cropIdToPlant, plantTime: Date.now(), isHarvestable: false }
           : p
       )
     );
-    setCurrency(prevCurrency => prevCurrency - cropToPlant.seedPrice);
-    setSelectedCropToPlantId(undefined); // Deselect after planting
+    setCurrency(prevCurrency => prevCurrency - effectiveSeedPrice);
+    setSelectedCropToPlantId(undefined);
     toast({
       title: `${cropToPlant.name} planted!`,
-      description: `Paid ${cropToPlant.seedPrice} gold. Watch it grow.`,
+      description: `Paid ${effectiveSeedPrice} gold. Watch it grow.`,
     });
-  }, [currency, toast]);
+  }, [currency, toast, getEffectiveCropSeedPrice, upgrades.bulkDiscount]);
 
   const handleHarvestCrop = useCallback((plotId: string, harvestedCropId: string) => {
     const crop = CROPS_DATA.find(c => c.id === harvestedCropId);
@@ -101,6 +126,8 @@ export default function HarvestClickerPage() {
       return;
     }
 
+    const effectiveSellPrice = getEffectiveCropSellPrice(crop.sellPrice);
+
     setInventory(prevInventory =>
       prevInventory
         .map(item =>
@@ -111,32 +138,53 @@ export default function HarvestClickerPage() {
         .filter(item => item.quantity > 0)
     );
 
-    setCurrency(prevCurrency => prevCurrency + crop.sellPrice * quantity);
+    setCurrency(prevCurrency => prevCurrency + effectiveSellPrice * quantity);
     toast({
       title: `Sold ${quantity} ${crop.name}(s)!`,
-      description: `You earned ${crop.sellPrice * quantity} gold.`,
+      description: `You earned ${effectiveSellPrice * quantity} gold.`,
     });
-  }, [inventory, toast]);
+  }, [inventory, toast, getEffectiveCropSellPrice, upgrades.negotiationSkills]);
+  
+  const handleBuyUpgrade = useCallback((upgradeId: UpgradeId) => {
+    const upgradeToBuy = UPGRADES_DATA.find(u => u.id === upgradeId);
+    if (!upgradeToBuy) {
+      toast({ title: "Upgrade not found!", variant: "destructive" });
+      return;
+    }
+    if (upgrades[upgradeId]) {
+      toast({ title: "Already Purchased!", description: `You already own ${upgradeToBuy.name}.` });
+      return;
+    }
+    if (currency < upgradeToBuy.cost) {
+      toast({ title: "Not Enough Gold!", description: `You need ${upgradeToBuy.cost} gold for ${upgradeToBuy.name}.`, variant: "destructive" });
+      return;
+    }
+
+    setCurrency(prevCurrency => prevCurrency - upgradeToBuy.cost);
+    setUpgrades(prevUpgrades => ({ ...prevUpgrades, [upgradeId]: true }));
+    toast({ title: "Upgrade Purchased!", description: `You bought ${upgradeToBuy.name} for ${upgradeToBuy.cost} gold.` });
+
+  }, [currency, upgrades, toast]);
 
   const resetGame = () => {
     setPlots(generateInitialPlots(NUM_PLOTS));
     setCurrency(INITIAL_CURRENCY);
     setInventory([]);
     setSelectedCropToPlantId(undefined);
+    setUpgrades(initialUpgradesState);
     toast({
       title: "Game Reset",
       description: "Started a new farm!",
     });
   };
   
-  // Client-side check for hydration
   const [isClient, setIsClient] = useState(false);
   useEffect(() => {
     setIsClient(true);
   }, []);
 
   if (!isClient) {
-    return null; // Or a loading spinner
+    return null; 
   }
 
   return (
@@ -149,6 +197,7 @@ export default function HarvestClickerPage() {
               onSelectCrop={handleSelectCrop}
               selectedCropId={selectedCropToPlantId}
               currency={currency}
+              getEffectiveCropSeedPrice={getEffectiveCropSeedPrice}
             />
           </div>
           <div className="lg:col-span-2">
@@ -157,6 +206,7 @@ export default function HarvestClickerPage() {
               onPlant={handlePlantCrop}
               onHarvest={handleHarvestCrop}
               selectedCropToPlantId={selectedCropToPlantId}
+              getEffectiveCropGrowTime={getEffectiveCropGrowTime}
             />
           </div>
         </div>
@@ -165,6 +215,10 @@ export default function HarvestClickerPage() {
             inventory={inventory} 
             onSellCrop={handleSellCrop} 
             currency={currency}
+            upgradesData={UPGRADES_DATA}
+            purchasedUpgrades={upgrades}
+            onBuyUpgrade={handleBuyUpgrade}
+            getEffectiveCropSellPrice={getEffectiveCropSellPrice}
           />
         </div>
         <div className="pt-4 text-center">

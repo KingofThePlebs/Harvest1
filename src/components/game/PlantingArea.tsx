@@ -8,9 +8,10 @@ interface PlantingAreaProps {
   onPlant: (plotId: string, cropId: string) => void;
   onHarvest: (plotId: string, cropId: string) => void;
   selectedCropToPlantId?: string;
+  getEffectiveCropGrowTime: (baseTime: number) => number;
 }
 
-const PlantingArea: FC<PlantingAreaProps> = ({ plots, onPlant, onHarvest, selectedCropToPlantId }) => {
+const PlantingArea: FC<PlantingAreaProps> = ({ plots, onPlant, onHarvest, selectedCropToPlantId, getEffectiveCropGrowTime }) => {
   return (
     <Card className="shadow-lg">
       <CardHeader>
@@ -25,6 +26,7 @@ const PlantingArea: FC<PlantingAreaProps> = ({ plots, onPlant, onHarvest, select
               onPlant={onPlant}
               onHarvest={onHarvest}
               selectedCropToPlantId={selectedCropToPlantId}
+              getEffectiveCropGrowTime={getEffectiveCropGrowTime}
             />
           ))}
         </div>
