@@ -5,7 +5,7 @@ import { CROPS_DATA } from '@/config/crops';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, Package, Coins } from 'lucide-react';
+import { ShoppingCart, Package, Coins, TrendingUp } from 'lucide-react';
 
 interface InventoryAndShopProps {
   inventory: InventoryItem[];
@@ -20,9 +20,10 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({ inventory, onSellCrop, cu
     <Card className="shadow-lg">
       <Tabs defaultValue="inventory" className="w-full">
         <CardHeader className="pb-0">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="inventory" className="flex items-center gap-2"><Package className="w-4 h-4" />Inventory</TabsTrigger>
             <TabsTrigger value="shop" className="flex items-center gap-2"><ShoppingCart className="w-4 h-4" />Shop</TabsTrigger>
+            <TabsTrigger value="upgrades" className="flex items-center gap-2"><TrendingUp className="w-4 h-4" />Upgrades</TabsTrigger>
           </TabsList>
         </CardHeader>
         
@@ -95,6 +96,34 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({ inventory, onSellCrop, cu
                 })}
               </ul>
             )}
+          </CardContent>
+        </TabsContent>
+
+        <TabsContent value="upgrades">
+          <CardContent className="space-y-4 pt-4 max-h-[60vh] overflow-y-auto">
+            <CardTitle className="text-xl text-primary-foreground/80">Farm Upgrades</CardTitle>
+            <CardDescription>Purchase upgrades to improve your farm.</CardDescription>
+            <div className="flex items-center space-x-2 text-lg font-semibold mb-4">
+                <Coins className="h-5 w-5 text-primary" />
+                <span>Your Gold: {currency}</span>
+            </div>
+            <p className="text-muted-foreground">Upgrades coming soon!</p>
+            {/* Placeholder for upgrade items */}
+            {/* 
+            Example upgrade item structure:
+            <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm">
+              <div className="flex items-center space-x-3">
+                <TrendingUp className="w-8 h-8 text-blue-500" />
+                <div>
+                  <p className="font-semibold">Faster Growth</p>
+                  <p className="text-xs text-muted-foreground">Reduces crop grow time by 10%.</p>
+                </div>
+              </div>
+              <Button size="sm" className="text-xs h-8">
+                Buy (Cost: 100)
+              </Button>
+            </div>
+            */}
           </CardContent>
         </TabsContent>
       </Tabs>
