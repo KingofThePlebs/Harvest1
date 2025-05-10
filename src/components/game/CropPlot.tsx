@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { FC } from 'react';
@@ -12,13 +13,13 @@ import { Leaf, Zap } from 'lucide-react';
 
 interface CropPlotProps {
   plot: PlotState;
-  onPlant: (plotId: string, cropId: string) => void;
+  onPlant: (plotId: string) => void; // Changed: no longer takes cropId
   onHarvest: (plotId: string, cropId: string) => void;
-  selectedCropToPlantId?: string;
+  selectedSeedId?: string; // Renamed from selectedCropToPlantId
   getEffectiveCropGrowTime: (baseTime: number) => number;
 }
 
-const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedCropToPlantId, getEffectiveCropGrowTime }) => {
+const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId, getEffectiveCropGrowTime }) => {
   const [progress, setProgress] = useState(0);
   const [isReadyToHarvest, setIsReadyToHarvest] = useState(plot.isHarvestable || false);
 
@@ -49,15 +50,15 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedCropToP
       };
       
       updateGrowth(); 
-      if (!isReadyToHarvest) { // check again because updateGrowth might have set it
-         intervalId = setInterval(updateGrowth, 100);
+      if (!isReadyToHarvest && effectiveGrowTime > 0) { 
+         intervalId = setInterval(updateGrowth, Math.min(100, effectiveGrowTime / 100)); // Update more frequently for short grow times
       }
 
     } else if (!plantedCrop) {
       setProgress(0);
       setIsReadyToHarvest(false);
     } else if (isReadyToHarvest) {
-      setProgress(100); // Ensure progress is 100 if already harvestable
+      setProgress(100); 
     }
 
 
@@ -69,10 +70,10 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedCropToP
   const handlePlotClick = () => {
     if (isReadyToHarvest && plantedCrop) {
       onHarvest(plot.id, plantedCrop.id);
-      setIsReadyToHarvest(false); // Reset after harvest
+      setIsReadyToHarvest(false); 
       setProgress(0);
-    } else if (!plantedCrop && selectedCropToPlantId) {
-      onPlant(plot.id, selectedCropToPlantId);
+    } else if (!plantedCrop && selectedSeedId) {
+      onPlant(plot.id); // Call onPlant with only plotId
     }
   };
   
@@ -114,11 +115,11 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedCropToP
       <CardFooter className="p-2 pb-4 w-full">
         <Button 
           onClick={handlePlotClick} 
-          disabled={(!plantedCrop && !selectedCropToPlantId) || (plantedCrop && !isReadyToHarvest && progress < 100)}
+          disabled={(!plantedCrop && !selectedSeedId) || (plantedCrop && !isReadyToHarvest && progress < 100)}
           className="w-full text-xs h-8"
           variant={isReadyToHarvest ? "default" : "secondary"}
         >
-          {isReadyToHarvest ? 'Harvest' : plantedCrop ? 'Growing...' : selectedCropToPlantId ? 'Plant' : 'Select Crop'}
+          {isReadyToHarvest ? 'Harvest' : plantedCrop ? 'Growing...' : selectedSeedId ? 'Plant' : 'Select Seed'}
         </Button>
       </CardFooter>
     </Card>
@@ -126,3 +127,5 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedCropToP
 };
 
 export default CropPlot;
+
+    

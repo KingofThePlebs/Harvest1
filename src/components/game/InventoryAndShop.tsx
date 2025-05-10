@@ -1,3 +1,4 @@
+
 import type { FC } from 'react';
 import Image from 'next/image';
 import type { InventoryItem, Crop, UpgradeDefinition, UpgradesState, UpgradeId } from '@/types';
@@ -5,11 +6,14 @@ import { CROPS_DATA } from '@/config/crops';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle } from 'lucide-react';
+import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake } from 'lucide-react';
 
 interface InventoryAndShopProps {
-  inventory: InventoryItem[];
+  harvestedInventory: InventoryItem[];
+  ownedSeeds: InventoryItem[];
   onSellCrop: (cropId: string, quantity: number) => void;
+  onSelectSeedForPlanting: (seedId: string) => void;
+  selectedSeedId?: string;
   currency: number;
   upgradesData: UpgradeDefinition[];
   purchasedUpgrades: UpgradesState;
@@ -18,8 +22,11 @@ interface InventoryAndShopProps {
 }
 
 const InventoryAndShop: FC<InventoryAndShopProps> = ({ 
-  inventory, 
+  harvestedInventory, 
+  ownedSeeds,
   onSellCrop, 
+  onSelectSeedForPlanting,
+  selectedSeedId,
   currency, 
   upgradesData, 
   purchasedUpgrades, 
@@ -30,28 +37,33 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
 
   return (
     <Card className="shadow-lg">
-      <Tabs defaultValue="inventory" className="w-full">
+      <Tabs defaultValue="mySeeds" className="w-full">
         <CardHeader className="pb-0">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="inventory" className="flex items-center gap-2"><Package className="w-4 h-4" />Inventory</TabsTrigger>
-            <TabsTrigger value="shop" className="flex items-center gap-2"><ShoppingCart className="w-4 h-4" />Shop</TabsTrigger>
+            <TabsTrigger value="mySeeds" className="flex items-center gap-2"><Sprout className="w-4 h-4" />My Seeds</TabsTrigger>
+            <TabsTrigger value="sellMarket" className="flex items-center gap-2"><Handshake className="w-4 h-4" />Sell Market</TabsTrigger>
             <TabsTrigger value="upgrades" className="flex items-center gap-2"><TrendingUp className="w-4 h-4" />Upgrades</TabsTrigger>
           </TabsList>
         </CardHeader>
         
-        <TabsContent value="inventory">
+        <TabsContent value="mySeeds">
           <CardContent className="space-y-4 pt-4 max-h-[60vh] overflow-y-auto">
-            <CardTitle className="text-xl text-primary-foreground/80">Your Harvest</CardTitle>
-            {inventory.length === 0 ? (
-              <p className="text-muted-foreground">Your inventory is empty. Harvest some crops!</p>
+            <CardTitle className="text-xl text-primary-foreground/80">Your Seed Inventory</CardTitle>
+            <CardDescription>Select a seed from your inventory to plant on an empty plot.</CardDescription>
+            {ownedSeeds.length === 0 ? (
+              <p className="text-muted-foreground">Your seed inventory is empty. Buy some seeds from the Seed Shop!</p>
             ) : (
               <ul className="space-y-3">
-                {inventory.map(item => {
+                {ownedSeeds.map(item => {
                   const crop = getCropById(item.cropId);
                   if (!crop) return null;
                   const IconComponent = crop.icon;
+                  const isSelected = selectedSeedId === item.cropId;
                   return (
-                    <li key={item.cropId} className="flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm">
+                    <li key={item.cropId} 
+                        className={`flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm transition-all duration-200
+                                    ${isSelected ? 'ring-2 ring-primary-foreground ring-offset-2 ring-offset-primary' : ''}`}
+                    >
                       <div className="flex items-center space-x-3">
                         {IconComponent ? (
                           <IconComponent className="w-8 h-8 text-green-600" />
@@ -63,6 +75,16 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                           <p className="text-xs text-muted-foreground">Quantity: {item.quantity}</p>
                         </div>
                       </div>
+                      <Button 
+                        size="sm" 
+                        onClick={() => onSelectSeedForPlanting(item.cropId)} 
+                        disabled={item.quantity <= 0}
+                        variant={isSelected ? "default" : "outline"}
+                        className="text-xs h-8"
+                      >
+                        {isSelected ? <CheckCircle className="w-4 h-4 mr-1" /> : null}
+                        {isSelected ? 'Selected' : 'Select'}
+                      </Button>
                     </li>
                   );
                 })}
@@ -71,19 +93,19 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
           </CardContent>
         </TabsContent>
 
-        <TabsContent value="shop">
+        <TabsContent value="sellMarket">
           <CardContent className="space-y-4 pt-4 max-h-[60vh] overflow-y-auto">
-            <CardTitle className="text-xl text-primary-foreground/80">Sell Crops</CardTitle>
+            <CardTitle className="text-xl text-primary-foreground/80">Sell Harvested Crops</CardTitle>
             <CardDescription>Sell your harvested crops for gold.</CardDescription>
              <div className="flex items-center space-x-2 text-lg font-semibold mb-4">
                 <Coins className="h-5 w-5 text-primary" />
                 <span>Your Gold: {currency}</span>
             </div>
-            {inventory.length === 0 ? (
+            {harvestedInventory.length === 0 ? (
               <p className="text-muted-foreground">Nothing to sell. Harvest some crops first!</p>
             ) : (
               <ul className="space-y-3">
-                {inventory.map(item => {
+                {harvestedInventory.map(item => {
                   const crop = getCropById(item.cropId);
                   if (!crop) return null;
                   const IconComponent = crop.icon;
@@ -161,3 +183,5 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
 };
 
 export default InventoryAndShop;
+
+    

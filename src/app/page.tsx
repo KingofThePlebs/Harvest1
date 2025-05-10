@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -6,7 +7,7 @@ import { CROPS_DATA } from '@/config/crops';
 import { UPGRADES_DATA } from '@/config/upgrades';
 import GameHeader from '@/components/game/GameHeader';
 import PlantingArea from '@/components/game/PlantingArea';
-import AvailableCropsPanel from '@/components/game/AvailableCropsPanel';
+import SeedShopPanel from '@/components/game/SeedShopPanel';
 import InventoryAndShop from '@/components/game/InventoryAndShop';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
@@ -14,7 +15,7 @@ import { RefreshCcw } from 'lucide-react';
 
 const INITIAL_CURRENCY = 20;
 const INITIAL_NUM_PLOTS = 6;
-const PLOT_EXPANSION_AMOUNT = 3; // Number of plots added by the 'expandFarm' upgrade
+const PLOT_EXPANSION_AMOUNT = 3; 
 
 const generateInitialPlots = (count: number): PlotState[] => {
   return Array.from({ length: count }, (_, i) => ({
@@ -33,8 +34,9 @@ const initialUpgradesState: UpgradesState = {
 export default function HarvestClickerPage() {
   const [plots, setPlots] = useState<PlotState[]>(() => generateInitialPlots(INITIAL_NUM_PLOTS));
   const [currency, setCurrency] = useState<number>(INITIAL_CURRENCY);
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [selectedCropToPlantId, setSelectedCropToPlantId] = useState<string | undefined>(undefined);
+  const [harvestedInventory, setHarvestedInventory] = useState<InventoryItem[]>([]);
+  const [ownedSeeds, setOwnedSeeds] = useState<InventoryItem[]>([]);
+  const [selectedSeedFromOwnedId, setSelectedSeedFromOwnedId] = useState<string | undefined>(undefined);
   const [upgrades, setUpgrades] = useState<UpgradesState>(initialUpgradesState);
   const { toast } = useToast();
 
@@ -50,48 +52,94 @@ export default function HarvestClickerPage() {
     return upgrades.fertilizer ? baseTime * 0.8 : baseTime;
   }, [upgrades.fertilizer]);
 
+  const handleBuySeed = useCallback((cropId: string) => {
+    const cropToBuy = CROPS_DATA.find(c => c.id === cropId);
+    if (!cropToBuy) return;
 
-  const handleSelectCrop = (cropId: string) => {
-    setSelectedCropToPlantId(cropId);
-    const crop = CROPS_DATA.find(c => c.id === cropId);
-    if (!crop) return;
-    const effectiveSeedPrice = getEffectiveCropSeedPrice(crop.seedPrice);
-    toast({
-      title: `${crop.name} Selected`,
-      description: `Cost: ${effectiveSeedPrice} gold. Click on an empty plot to plant.`,
-    });
-  };
-
-  const handlePlantCrop = useCallback((plotId: string, cropIdToPlant: string) => {
-    const cropToPlant = CROPS_DATA.find(c => c.id === cropIdToPlant);
-    if (!cropToPlant) return;
-
-    const effectiveSeedPrice = getEffectiveCropSeedPrice(cropToPlant.seedPrice);
+    const effectiveSeedPrice = getEffectiveCropSeedPrice(cropToBuy.seedPrice);
 
     if (currency < effectiveSeedPrice) {
       toast({
         title: "Not Enough Gold!",
-        description: `You need ${effectiveSeedPrice} gold to plant ${cropToPlant.name}.`,
+        description: `You need ${effectiveSeedPrice} gold to buy a ${cropToBuy.name} seed.`,
         variant: "destructive",
       });
-      setSelectedCropToPlantId(undefined);
       return;
+    }
+
+    setCurrency(prevCurrency => prevCurrency - effectiveSeedPrice);
+    setOwnedSeeds(prevOwnedSeeds => {
+      const existingSeedIndex = prevOwnedSeeds.findIndex(item => item.cropId === cropId);
+      if (existingSeedIndex > -1) {
+        const updatedSeeds = [...prevOwnedSeeds];
+        updatedSeeds[existingSeedIndex].quantity += 1;
+        return updatedSeeds;
+      }
+      return [...prevOwnedSeeds, { cropId, quantity: 1 }];
+    });
+    toast({
+      title: `${cropToBuy.name} Seed Purchased!`,
+      description: `Paid ${effectiveSeedPrice} gold. It's now in your seed inventory.`,
+    });
+  }, [currency, toast, getEffectiveCropSeedPrice]);
+
+  const handleSelectSeedForPlanting = useCallback((seedId: string) => {
+    const seedInInventory = ownedSeeds.find(s => s.cropId === seedId && s.quantity > 0);
+    if (!seedInInventory) {
+        toast({
+            title: "Seed Not Available",
+            description: "You don't own this seed or have run out.",
+            variant: "destructive",
+        });
+        setSelectedSeedFromOwnedId(undefined);
+        return;
+    }
+    setSelectedSeedFromOwnedId(seedId);
+    const crop = CROPS_DATA.find(c => c.id === seedId);
+    toast({
+      title: `${crop?.name || 'Seed'} Selected`,
+      description: `Click on an empty plot to plant.`,
+    });
+  }, [ownedSeeds, toast]);
+  
+
+  const handlePlantCrop = useCallback((plotId: string) => {
+    if (!selectedSeedFromOwnedId) {
+      toast({ title: "No Seed Selected", description: "Please select a seed from your inventory to plant.", variant: "destructive" });
+      return;
+    }
+
+    const cropToPlant = CROPS_DATA.find(c => c.id === selectedSeedFromOwnedId);
+    if (!cropToPlant) return; // Should not happen if selectedSeedFromOwnedId is valid
+
+    const seedInInventory = ownedSeeds.find(s => s.cropId === selectedSeedFromOwnedId);
+    if (!seedInInventory || seedInInventory.quantity <= 0) {
+        toast({ title: "Out of Seeds!", description: `You don't have any ${cropToPlant.name} seeds left.`, variant: "destructive" });
+        setSelectedSeedFromOwnedId(undefined);
+        return;
     }
 
     setPlots(prevPlots =>
       prevPlots.map(p =>
         p.id === plotId
-          ? { ...p, cropId: cropIdToPlant, plantTime: Date.now(), isHarvestable: false }
+          ? { ...p, cropId: selectedSeedFromOwnedId, plantTime: Date.now(), isHarvestable: false }
           : p
       )
     );
-    setCurrency(prevCurrency => prevCurrency - effectiveSeedPrice);
-    setSelectedCropToPlantId(undefined);
+    
+    setOwnedSeeds(prevOwnedSeeds => 
+        prevOwnedSeeds.map(s => 
+            s.cropId === selectedSeedFromOwnedId ? {...s, quantity: s.quantity -1} : s
+        ).filter(s => s.quantity > 0) // Optional: remove seed if quantity becomes 0
+    );
+
     toast({
       title: `${cropToPlant.name} planted!`,
-      description: `Paid ${effectiveSeedPrice} gold. Watch it grow.`,
+      description: `One ${cropToPlant.name} seed used from inventory. Watch it grow.`,
     });
-  }, [currency, toast, getEffectiveCropSeedPrice]);
+    setSelectedSeedFromOwnedId(undefined); // De-select after planting
+  }, [selectedSeedFromOwnedId, ownedSeeds, toast]);
+
 
   const handleHarvestCrop = useCallback((plotId: string, harvestedCropId: string) => {
     const crop = CROPS_DATA.find(c => c.id === harvestedCropId);
@@ -103,7 +151,7 @@ export default function HarvestClickerPage() {
       )
     );
 
-    setInventory(prevInventory => {
+    setHarvestedInventory(prevInventory => {
       const existingItemIndex = prevInventory.findIndex(item => item.cropId === harvestedCropId);
       if (existingItemIndex > -1) {
         const updatedInventory = [...prevInventory];
@@ -114,7 +162,7 @@ export default function HarvestClickerPage() {
     });
     toast({
       title: `Harvested ${crop.name}!`,
-      description: "It's now in your inventory.",
+      description: "It's now in your sell market inventory.",
     });
   }, [toast]);
 
@@ -122,7 +170,7 @@ export default function HarvestClickerPage() {
     const crop = CROPS_DATA.find(c => c.id === cropIdToSell);
     if (!crop) return;
 
-    const itemInInventory = inventory.find(item => item.cropId === cropIdToSell);
+    const itemInInventory = harvestedInventory.find(item => item.cropId === cropIdToSell);
     if (!itemInInventory || itemInInventory.quantity < quantity) {
       toast({ title: "Not enough crops to sell!", variant: "destructive" });
       return;
@@ -130,7 +178,7 @@ export default function HarvestClickerPage() {
 
     const effectiveSellPrice = getEffectiveCropSellPrice(crop.sellPrice);
 
-    setInventory(prevInventory =>
+    setHarvestedInventory(prevInventory =>
       prevInventory
         .map(item =>
           item.cropId === cropIdToSell
@@ -145,7 +193,7 @@ export default function HarvestClickerPage() {
       title: `Sold ${quantity} ${crop.name}(s)!`,
       description: `You earned ${effectiveSellPrice * quantity} gold.`,
     });
-  }, [inventory, toast, getEffectiveCropSellPrice]);
+  }, [harvestedInventory, toast, getEffectiveCropSellPrice]);
   
   const handleBuyUpgrade = useCallback((upgradeId: UpgradeId) => {
     const upgradeToBuy = UPGRADES_DATA.find(u => u.id === upgradeId);
@@ -181,8 +229,9 @@ export default function HarvestClickerPage() {
   const resetGame = () => {
     setPlots(generateInitialPlots(INITIAL_NUM_PLOTS));
     setCurrency(INITIAL_CURRENCY);
-    setInventory([]);
-    setSelectedCropToPlantId(undefined);
+    setHarvestedInventory([]);
+    setOwnedSeeds([]);
+    setSelectedSeedFromOwnedId(undefined);
     setUpgrades(initialUpgradesState);
     toast({
       title: "Game Reset",
@@ -196,10 +245,6 @@ export default function HarvestClickerPage() {
   }, []);
 
   useEffect(() => {
-    // This effect ensures plots are correctly reset if currentNumPlots changes due to reset.
-    // For expansion, handleBuyUpgrade directly appends plots.
-    // For initial load, useState initializer handles it.
-    // This is primarily for resetting plots when the game is reset.
     if (upgrades.expandFarm === false && plots.length !== INITIAL_NUM_PLOTS) {
         setPlots(generateInitialPlots(INITIAL_NUM_PLOTS));
     }
@@ -216,9 +261,8 @@ export default function HarvestClickerPage() {
       <main className="flex-grow container mx-auto p-4 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
-            <AvailableCropsPanel 
-              onSelectCrop={handleSelectCrop}
-              selectedCropId={selectedCropToPlantId}
+            <SeedShopPanel 
+              onBuySeed={handleBuySeed}
               currency={currency}
               getEffectiveCropSeedPrice={getEffectiveCropSeedPrice}
             />
@@ -228,15 +272,18 @@ export default function HarvestClickerPage() {
               plots={plots}
               onPlant={handlePlantCrop}
               onHarvest={handleHarvestCrop}
-              selectedCropToPlantId={selectedCropToPlantId}
+              selectedSeedId={selectedSeedFromOwnedId}
               getEffectiveCropGrowTime={getEffectiveCropGrowTime}
             />
           </div>
         </div>
         <div>
           <InventoryAndShop 
-            inventory={inventory} 
-            onSellCrop={handleSellCrop} 
+            harvestedInventory={harvestedInventory}
+            ownedSeeds={ownedSeeds}
+            onSellCrop={handleSellCrop}
+            onSelectSeedForPlanting={handleSelectSeedForPlanting}
+            selectedSeedId={selectedSeedFromOwnedId}
             currency={currency}
             upgradesData={UPGRADES_DATA}
             purchasedUpgrades={upgrades}
@@ -256,3 +303,5 @@ export default function HarvestClickerPage() {
     </div>
   );
 }
+
+    
