@@ -27,7 +27,7 @@ export const UPGRADES_DATA: UpgradeDefinition[] = [
     id: 'expandFarm',
     name: 'Expand Farm',
     description: 'Adds 3 more plots to your farm.',
-    cost: 200,
+    cost: 20,
     icon: LandPlot,
   },
 ];
