@@ -43,7 +43,12 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedCropToP
       };
 
       updateGrowth(); // Initial check
-      if (progress < 100) {
+      // The `progress` variable here refers to the state value from the render cycle
+      // that set up this effect. If updateGrowth() just set progress to 100 via setProgress,
+      // this `progress` value might be stale (e.g., 0).
+      // The interval will run once, updateGrowth() will be called, find progress is 100,
+      // set isReadyToHarvest, and clear itself. This is slightly inefficient but avoids the loop.
+      if (progress < 100) { 
         intervalId = setInterval(updateGrowth, 100); // Update every 100ms
       }
     } else {
@@ -54,7 +59,7 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedCropToP
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [plantedCrop, plot.plantTime, progress]); // Added progress to dependencies to re-evaluate interval
+  }, [plantedCrop, plot.plantTime]); // Removed `progress` from dependencies
 
   const handlePlotClick = () => {
     if (isReadyToHarvest && plantedCrop) {
