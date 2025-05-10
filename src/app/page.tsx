@@ -13,7 +13,8 @@ import { Button } from '@/components/ui/button';
 import { RefreshCcw } from 'lucide-react';
 
 const INITIAL_CURRENCY = 20;
-const NUM_PLOTS = 6;
+const INITIAL_NUM_PLOTS = 6;
+const PLOT_EXPANSION_AMOUNT = 3; // Number of plots added by the 'expandFarm' upgrade
 
 const generateInitialPlots = (count: number): PlotState[] => {
   return Array.from({ length: count }, (_, i) => ({
@@ -26,10 +27,11 @@ const initialUpgradesState: UpgradesState = {
   fertilizer: false,
   negotiationSkills: false,
   bulkDiscount: false,
+  expandFarm: false,
 };
 
 export default function HarvestClickerPage() {
-  const [plots, setPlots] = useState<PlotState[]>(() => generateInitialPlots(NUM_PLOTS));
+  const [plots, setPlots] = useState<PlotState[]>(() => generateInitialPlots(INITIAL_NUM_PLOTS));
   const [currency, setCurrency] = useState<number>(INITIAL_CURRENCY);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [selectedCropToPlantId, setSelectedCropToPlantId] = useState<string | undefined>(undefined);
@@ -89,7 +91,7 @@ export default function HarvestClickerPage() {
       title: `${cropToPlant.name} planted!`,
       description: `Paid ${effectiveSeedPrice} gold. Watch it grow.`,
     });
-  }, [currency, toast, getEffectiveCropSeedPrice, upgrades.bulkDiscount]);
+  }, [currency, toast, getEffectiveCropSeedPrice]);
 
   const handleHarvestCrop = useCallback((plotId: string, harvestedCropId: string) => {
     const crop = CROPS_DATA.find(c => c.id === harvestedCropId);
@@ -143,7 +145,7 @@ export default function HarvestClickerPage() {
       title: `Sold ${quantity} ${crop.name}(s)!`,
       description: `You earned ${effectiveSellPrice * quantity} gold.`,
     });
-  }, [inventory, toast, getEffectiveCropSellPrice, upgrades.negotiationSkills]);
+  }, [inventory, toast, getEffectiveCropSellPrice]);
   
   const handleBuyUpgrade = useCallback((upgradeId: UpgradeId) => {
     const upgradeToBuy = UPGRADES_DATA.find(u => u.id === upgradeId);
@@ -162,12 +164,22 @@ export default function HarvestClickerPage() {
 
     setCurrency(prevCurrency => prevCurrency - upgradeToBuy.cost);
     setUpgrades(prevUpgrades => ({ ...prevUpgrades, [upgradeId]: true }));
+    
+    if (upgradeId === 'expandFarm') {
+      const currentPlotsCount = plots.length;
+      const newPlotsToAdd = Array.from({ length: PLOT_EXPANSION_AMOUNT }, (_, i) => ({
+        id: `plot-${currentPlotsCount + i + 1}`,
+        isHarvestable: false,
+      }));
+      setPlots(prevPlots => [...prevPlots, ...newPlotsToAdd]);
+    }
+    
     toast({ title: "Upgrade Purchased!", description: `You bought ${upgradeToBuy.name} for ${upgradeToBuy.cost} gold.` });
 
-  }, [currency, upgrades, toast]);
+  }, [currency, upgrades, toast, plots]);
 
   const resetGame = () => {
-    setPlots(generateInitialPlots(NUM_PLOTS));
+    setPlots(generateInitialPlots(INITIAL_NUM_PLOTS));
     setCurrency(INITIAL_CURRENCY);
     setInventory([]);
     setSelectedCropToPlantId(undefined);
@@ -182,6 +194,17 @@ export default function HarvestClickerPage() {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    // This effect ensures plots are correctly reset if currentNumPlots changes due to reset.
+    // For expansion, handleBuyUpgrade directly appends plots.
+    // For initial load, useState initializer handles it.
+    // This is primarily for resetting plots when the game is reset.
+    if (upgrades.expandFarm === false && plots.length !== INITIAL_NUM_PLOTS) {
+        setPlots(generateInitialPlots(INITIAL_NUM_PLOTS));
+    }
+  }, [upgrades.expandFarm, plots.length]);
+
 
   if (!isClient) {
     return null; 

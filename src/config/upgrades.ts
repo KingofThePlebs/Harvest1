@@ -1,5 +1,5 @@
 import type { UpgradeDefinition } from '@/types';
-import { Droplets, Award, Tag } from 'lucide-react';
+import { Droplets, Award, Tag, LandPlot } from 'lucide-react';
 
 export const UPGRADES_DATA: UpgradeDefinition[] = [
   {
@@ -22,5 +22,12 @@ export const UPGRADES_DATA: UpgradeDefinition[] = [
     description: 'Seeds cost 10% less.',
     cost: 75,
     icon: Tag,
+  },
+  {
+    id: 'expandFarm',
+    name: 'Expand Farm',
+    description: 'Adds 3 more plots to your farm.',
+    cost: 200,
+    icon: LandPlot,
   },
 ];

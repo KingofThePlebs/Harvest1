@@ -28,6 +28,7 @@ export interface UpgradesState {
   fertilizer: boolean;
   negotiationSkills: boolean;
   bulkDiscount: boolean;
+  expandFarm: boolean; // New upgrade for more plots
 }
 
 // Defines the possible IDs for upgrades, derived from UpgradesState keys
@@ -41,3 +42,4 @@ export interface UpgradeDefinition {
   cost: number;
   icon: LucideIcon;
 }
+
