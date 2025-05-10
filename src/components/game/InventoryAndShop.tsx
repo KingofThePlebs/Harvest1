@@ -6,7 +6,7 @@ import { CROPS_DATA } from '@/config/crops';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake } from 'lucide-react';
+import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building } from 'lucide-react';
 
 interface InventoryAndShopProps {
   harvestedInventory: InventoryItem[];
@@ -39,10 +39,11 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
     <Card className="shadow-lg">
       <Tabs defaultValue="mySeeds" className="w-full">
         <CardHeader className="pb-0">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="mySeeds" className="flex items-center gap-2"><Sprout className="w-4 h-4" />My Seeds</TabsTrigger>
             <TabsTrigger value="sellMarket" className="flex items-center gap-2"><Handshake className="w-4 h-4" />Sell Market</TabsTrigger>
             <TabsTrigger value="upgrades" className="flex items-center gap-2"><TrendingUp className="w-4 h-4" />Upgrades</TabsTrigger>
+            <TabsTrigger value="town" className="flex items-center gap-2"><Building className="w-4 h-4" />Town</TabsTrigger>
           </TabsList>
         </CardHeader>
         
@@ -177,11 +178,45 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
             </ul>
           </CardContent>
         </TabsContent>
+
+        <TabsContent value="town">
+          <CardContent className="space-y-4 pt-4 max-h-[60vh] overflow-y-auto">
+            <CardTitle className="text-xl text-primary-foreground/80">Welcome to Town!</CardTitle>
+            <CardDescription>Explore different buildings and features in town.</CardDescription>
+            <div className="flex items-center justify-center h-40">
+              <p className="text-muted-foreground">Town features coming soon!</p>
+            </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="hover:shadow-md transition-shadow">
+                    <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2"><ShoppingCart className="w-5 h-5" /> General Store</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground">Stock up on supplies or find rare items.</p>
+                    </CardContent>
+                    <CardContent className="pt-0">
+                        <Button variant="outline" className="w-full" disabled>Coming Soon</Button>
+                    </CardContent>
+                </Card>
+                 <Card className="hover:shadow-md transition-shadow">
+                    <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2"><Package className="w-5 h-5" /> Community Center</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground">Participate in events or take on quests.</p>
+                    </CardContent>
+                     <CardContent className="pt-0">
+                        <Button variant="outline" className="w-full" disabled>Coming Soon</Button>
+                    </CardContent>
+                </Card>
+            </div>
+          </CardContent>
+        </TabsContent>
+
       </Tabs>
     </Card>
   );
 };
 
 export default InventoryAndShop;
-
     
