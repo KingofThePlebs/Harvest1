@@ -115,7 +115,7 @@ export default function HarvestClickerPage() {
     const seedInInventory = ownedSeeds.find(s => s.cropId === selectedSeedFromOwnedId);
     if (!seedInInventory || seedInInventory.quantity <= 0) {
         toast({ title: "Out of Seeds!", description: `You don't have any ${cropToPlant.name} seeds left.`, variant: "destructive" });
-        setSelectedSeedFromOwnedId(undefined);
+        setSelectedSeedFromOwnedId(undefined); // Keep this to deselect if out of seeds for the selected type
         return;
     }
 
@@ -127,17 +127,23 @@ export default function HarvestClickerPage() {
       )
     );
     
-    setOwnedSeeds(prevOwnedSeeds => 
-        prevOwnedSeeds.map(s => 
+    setOwnedSeeds(prevOwnedSeeds => {
+        const updatedSeeds = prevOwnedSeeds.map(s => 
             s.cropId === selectedSeedFromOwnedId ? {...s, quantity: s.quantity -1} : s
-        ).filter(s => s.quantity > 0) 
-    );
+        );
+        const currentSelectedSeed = updatedSeeds.find(s => s.cropId === selectedSeedFromOwnedId);
+        if (currentSelectedSeed && currentSelectedSeed.quantity <= 0) {
+            setSelectedSeedFromOwnedId(undefined); // Deselect if this specific seed type runs out
+        }
+        return updatedSeeds.filter(s => s.quantity > 0);
+    });
+
 
     toast({
       title: `${cropToPlant.name} planted!`,
       description: `One ${cropToPlant.name} seed used from inventory. Watch it grow.`,
     });
-    setSelectedSeedFromOwnedId(undefined); 
+    //setSelectedSeedFromOwnedId(undefined); // Removed this line to keep the seed selected
   }, [selectedSeedFromOwnedId, ownedSeeds, toast]);
 
 
@@ -245,7 +251,10 @@ export default function HarvestClickerPage() {
   }, []);
 
   useEffect(() => {
-    if (upgrades.expandFarm === false && plots.length !== INITIAL_NUM_PLOTS) {
+    // This effect ensures that if the 'expandFarm' upgrade is somehow reset (e.g. game reset logic error)
+    // and the number of plots is greater than the initial, it resets plots to initial count.
+    // It primarily handles edge cases or future game reset logic changes.
+    if (upgrades.expandFarm === false && plots.length > INITIAL_NUM_PLOTS) {
         setPlots(generateInitialPlots(INITIAL_NUM_PLOTS));
     }
   }, [upgrades.expandFarm, plots.length]);
@@ -303,4 +312,3 @@ export default function HarvestClickerPage() {
     </div>
   );
 }
-
