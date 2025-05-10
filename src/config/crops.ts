@@ -7,6 +7,7 @@ export const CROPS_DATA: Crop[] = [
     name: 'Carrot',
     growTime: 5 * 1000, // 5 seconds
     sellPrice: 5,
+    seedPrice: 1,
     icon: Carrot,
   },
   {
@@ -14,6 +15,7 @@ export const CROPS_DATA: Crop[] = [
     name: 'Wheat',
     growTime: 10 * 1000, // 10 seconds
     sellPrice: 10,
+    seedPrice: 2,
     icon: Wheat,
   },
   {
@@ -21,6 +23,7 @@ export const CROPS_DATA: Crop[] = [
     name: 'Tomato',
     growTime: 15 * 1000, // 15 seconds
     sellPrice: 15,
+    seedPrice: 3,
     imageUrl: 'https://picsum.photos/id/1080/64/64', // Specific image for tomato
     dataAiHint: 'tomato plant',
   },
@@ -29,6 +32,7 @@ export const CROPS_DATA: Crop[] = [
     name: 'Potato',
     growTime: 8 * 1000, // 8 seconds
     sellPrice: 8,
+    seedPrice: 2,
     imageUrl: 'https://picsum.photos/id/1060/64/64', // Specific image for potato
     dataAiHint: 'potato plant',
   },
@@ -37,6 +41,7 @@ export const CROPS_DATA: Crop[] = [
     name: 'Strawberry',
     growTime: 12 * 1000, // 12 seconds
     sellPrice: 12,
+    seedPrice: 4,
     icon: Sprout, // Using Sprout as a placeholder, specific icon recommended
     //imageUrl: 'https://picsum.photos/seed/strawberry/64/64',
     //dataAiHint: 'strawberry plant',

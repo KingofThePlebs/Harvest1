@@ -5,6 +5,7 @@ export interface Crop {
   name: string;
   growTime: number; // in milliseconds
   sellPrice: number;
+  seedPrice: number; // Cost to buy the seed
   icon?: LucideIcon;
   imageUrl?: string;
   dataAiHint?: string; 
@@ -20,3 +21,4 @@ export interface InventoryItem {
   cropId: string;
   quantity: number;
 }
+

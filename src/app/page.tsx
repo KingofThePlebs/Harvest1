@@ -33,7 +33,7 @@ export default function HarvestClickerPage() {
     const crop = CROPS_DATA.find(c => c.id === cropId);
     toast({
       title: `${crop?.name || 'Crop'} Selected`,
-      description: "Click on an empty plot to plant.",
+      description: `Cost: ${crop?.seedPrice} gold. Click on an empty plot to plant.`,
     });
   };
 
@@ -41,11 +41,15 @@ export default function HarvestClickerPage() {
     const cropToPlant = CROPS_DATA.find(c => c.id === cropIdToPlant);
     if (!cropToPlant) return;
 
-    // Basic check if player can "afford" planting, though seeds are free in this version
-    // if (currency < (cropToPlant.buyPrice || 0)) { // Assuming a buyPrice if seeds cost money
-    //   toast({ title: "Not enough currency to buy seeds!", variant: "destructive" });
-    //   return;
-    // }
+    if (currency < cropToPlant.seedPrice) {
+      toast({
+        title: "Not Enough Gold!",
+        description: `You need ${cropToPlant.seedPrice} gold to plant ${cropToPlant.name}.`,
+        variant: "destructive",
+      });
+      setSelectedCropToPlantId(undefined); // Deselect if cannot afford
+      return;
+    }
 
     setPlots(prevPlots =>
       prevPlots.map(p =>
@@ -54,13 +58,13 @@ export default function HarvestClickerPage() {
           : p
       )
     );
-    // setCurrency(prevCurrency => prevCurrency - (cropToPlant.buyPrice || 0));
+    setCurrency(prevCurrency => prevCurrency - cropToPlant.seedPrice);
     setSelectedCropToPlantId(undefined); // Deselect after planting
     toast({
       title: `${cropToPlant.name} planted!`,
-      description: "Watch it grow.",
+      description: `Paid ${cropToPlant.seedPrice} gold. Watch it grow.`,
     });
-  }, [toast]);
+  }, [currency, toast]);
 
   const handleHarvestCrop = useCallback((plotId: string, harvestedCropId: string) => {
     const crop = CROPS_DATA.find(c => c.id === harvestedCropId);
@@ -68,7 +72,7 @@ export default function HarvestClickerPage() {
 
     setPlots(prevPlots =>
       prevPlots.map(p =>
-        p.id === plotId ? { ...p, cropId: undefined, plantTime: undefined } : p
+        p.id === plotId ? { ...p, cropId: undefined, plantTime: undefined, isHarvestable: false } : p
       )
     );
 
@@ -144,6 +148,7 @@ export default function HarvestClickerPage() {
             <AvailableCropsPanel 
               onSelectCrop={handleSelectCrop}
               selectedCropId={selectedCropToPlantId}
+              currency={currency}
             />
           </div>
           <div className="lg:col-span-2">
