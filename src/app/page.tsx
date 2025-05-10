@@ -261,18 +261,11 @@ export default function HarvestClickerPage() {
       <main className="flex-grow container mx-auto p-4 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
-            <InventoryAndShop 
-              harvestedInventory={harvestedInventory}
-              ownedSeeds={ownedSeeds}
-              onSellCrop={handleSellCrop}
-              onSelectSeedForPlanting={handleSelectSeedForPlanting}
-              selectedSeedId={selectedSeedFromOwnedId}
-              currency={currency}
-              upgradesData={UPGRADES_DATA}
-              purchasedUpgrades={upgrades}
-              onBuyUpgrade={handleBuyUpgrade}
-              getEffectiveCropSellPrice={getEffectiveCropSellPrice}
-            />
+             <SeedShopPanel 
+                onBuySeed={handleBuySeed}
+                currency={currency}
+                getEffectiveCropSeedPrice={getEffectiveCropSeedPrice}
+              />
           </div>
           <div className="lg:col-span-2">
             <PlantingArea
@@ -285,10 +278,17 @@ export default function HarvestClickerPage() {
           </div>
         </div>
         <div>
-          <SeedShopPanel 
-            onBuySeed={handleBuySeed}
+          <InventoryAndShop 
+            harvestedInventory={harvestedInventory}
+            ownedSeeds={ownedSeeds}
+            onSellCrop={handleSellCrop}
+            onSelectSeedForPlanting={handleSelectSeedForPlanting}
+            selectedSeedId={selectedSeedFromOwnedId}
             currency={currency}
-            getEffectiveCropSeedPrice={getEffectiveCropSeedPrice}
+            upgradesData={UPGRADES_DATA}
+            purchasedUpgrades={upgrades}
+            onBuyUpgrade={handleBuyUpgrade}
+            getEffectiveCropSellPrice={getEffectiveCropSellPrice}
           />
         </div>
         <div className="pt-4 text-center">
@@ -303,3 +303,4 @@ export default function HarvestClickerPage() {
     </div>
   );
 }
+
