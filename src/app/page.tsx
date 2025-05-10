@@ -110,7 +110,7 @@ export default function HarvestClickerPage() {
     }
 
     const cropToPlant = CROPS_DATA.find(c => c.id === selectedSeedFromOwnedId);
-    if (!cropToPlant) return; // Should not happen if selectedSeedFromOwnedId is valid
+    if (!cropToPlant) return; 
 
     const seedInInventory = ownedSeeds.find(s => s.cropId === selectedSeedFromOwnedId);
     if (!seedInInventory || seedInInventory.quantity <= 0) {
@@ -130,14 +130,14 @@ export default function HarvestClickerPage() {
     setOwnedSeeds(prevOwnedSeeds => 
         prevOwnedSeeds.map(s => 
             s.cropId === selectedSeedFromOwnedId ? {...s, quantity: s.quantity -1} : s
-        ).filter(s => s.quantity > 0) // Optional: remove seed if quantity becomes 0
+        ).filter(s => s.quantity > 0) 
     );
 
     toast({
       title: `${cropToPlant.name} planted!`,
       description: `One ${cropToPlant.name} seed used from inventory. Watch it grow.`,
     });
-    setSelectedSeedFromOwnedId(undefined); // De-select after planting
+    setSelectedSeedFromOwnedId(undefined); 
   }, [selectedSeedFromOwnedId, ownedSeeds, toast]);
 
 
@@ -261,10 +261,17 @@ export default function HarvestClickerPage() {
       <main className="flex-grow container mx-auto p-4 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
-            <SeedShopPanel 
-              onBuySeed={handleBuySeed}
+            <InventoryAndShop 
+              harvestedInventory={harvestedInventory}
+              ownedSeeds={ownedSeeds}
+              onSellCrop={handleSellCrop}
+              onSelectSeedForPlanting={handleSelectSeedForPlanting}
+              selectedSeedId={selectedSeedFromOwnedId}
               currency={currency}
-              getEffectiveCropSeedPrice={getEffectiveCropSeedPrice}
+              upgradesData={UPGRADES_DATA}
+              purchasedUpgrades={upgrades}
+              onBuyUpgrade={handleBuyUpgrade}
+              getEffectiveCropSellPrice={getEffectiveCropSellPrice}
             />
           </div>
           <div className="lg:col-span-2">
@@ -278,17 +285,10 @@ export default function HarvestClickerPage() {
           </div>
         </div>
         <div>
-          <InventoryAndShop 
-            harvestedInventory={harvestedInventory}
-            ownedSeeds={ownedSeeds}
-            onSellCrop={handleSellCrop}
-            onSelectSeedForPlanting={handleSelectSeedForPlanting}
-            selectedSeedId={selectedSeedFromOwnedId}
+          <SeedShopPanel 
+            onBuySeed={handleBuySeed}
             currency={currency}
-            upgradesData={UPGRADES_DATA}
-            purchasedUpgrades={upgrades}
-            onBuyUpgrade={handleBuyUpgrade}
-            getEffectiveCropSellPrice={getEffectiveCropSellPrice}
+            getEffectiveCropSeedPrice={getEffectiveCropSeedPrice}
           />
         </div>
         <div className="pt-4 text-center">
@@ -303,5 +303,3 @@ export default function HarvestClickerPage() {
     </div>
   );
 }
-
-    
