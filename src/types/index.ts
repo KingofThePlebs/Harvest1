@@ -58,8 +58,10 @@ export interface UpgradeDefinition {
 }
 
 export interface LeaderboardEntry {
-  id: string;
+  id: string; // Document ID from Firestore (typically playerId)
   name: string;
   score: number;
-  isCurrentUser?: boolean;
+  playerId: string; // Explicitly store playerId
+  isCurrentUser?: boolean; // Determined on the client
 }
+
