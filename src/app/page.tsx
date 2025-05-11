@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -292,7 +293,7 @@ export default function HarvestClickerPage() {
 
     toast({ title: "Upgrade Purchased!", description: `You bought ${upgradeToBuy.name} for ${upgradeToBuy.cost} gold.` });
 
-  }, [currency, upgrades, toast, plots]); // plots removed from here, handled by useEffect
+  }, [currency, upgrades, toast]);
 
   const handleBuyNeitt = useCallback((neittId: string) => {
     const neittToBuy = NEITTS_DATA.find(s => s.id === neittId);
@@ -320,64 +321,68 @@ export default function HarvestClickerPage() {
 
 
   const handleFeedNeitt = useCallback((instanceId: string) => {
-    setOwnedNeitts(prevOwnedNeitts => {
-      const neittIndex = prevOwnedNeitts.findIndex(n => n.instanceId === instanceId);
-      if (neittIndex === -1) {
+    const neittInstance = ownedNeitts.find(n => n.instanceId === instanceId);
+    if (!neittInstance) {
         toast({ title: "Neitt not found!", variant: "destructive" });
-        return prevOwnedNeitts;
-      }
+        return;
+    }
 
-      const neittInstance = prevOwnedNeitts[neittIndex];
-      const neittType = NEITTS_DATA.find(nt => nt.id === neittInstance.neittTypeId);
-
-      if (!neittType) {
+    const neittType = NEITTS_DATA.find(nt => nt.id === neittInstance.neittTypeId);
+    if (!neittType) {
         toast({ title: "Neitt type error!", variant: "destructive" });
-        return prevOwnedNeitts;
-      }
+        return;
+    }
 
-      if (neittInstance.nitsLeftToProduce > 0) {
+    if (neittInstance.nitsLeftToProduce > 0) {
         toast({ title: `${neittType.name} is already producing!`, description: "It's busy producing Nits." });
-        return prevOwnedNeitts;
-      }
-      
-      const requiredCrop = CROPS_DATA.find(c => c.id === neittType.feedCropId);
-      if (!requiredCrop) {
-          toast({ title: "Feeding Error", description: `Required feed crop (${neittType.feedCropId}) for ${neittType.name} not found.`, variant: "destructive" });
-          return prevOwnedNeitts;
-      }
+        return;
+    }
+    
+    const requiredCrop = CROPS_DATA.find(c => c.id === neittType.feedCropId);
+    if (!requiredCrop) {
+        toast({ title: "Feeding Error", description: `Required feed crop (${neittType.feedCropId}) for ${neittType.name} not found.`, variant: "destructive" });
+        return;
+    }
 
-      const cropInInventory = harvestedInventory.find(item => item.cropId === neittType.feedCropId);
-      if (!cropInInventory || cropInInventory.quantity < 1) {
-        toast({ 
-            title: `Not Enough ${requiredCrop.name}s!`, 
-            description: `You need 1 ${requiredCrop.name} to feed ${neittType.name}.`, 
-            variant: "destructive" 
-        });
-        return prevOwnedNeitts;
-      }
+    const cropInInventoryIndex = harvestedInventory.findIndex(item => item.cropId === neittType.feedCropId);
+    const cropInInventoryItem = cropInInventoryIndex > -1 ? harvestedInventory[cropInInventoryIndex] : undefined;
 
-      // Consume the crop
-      setHarvestedInventory(prevInventory =>
-        prevInventory
-          .map(item =>
-            item.cropId === requiredCrop.id
-              ? { ...item, quantity: item.quantity - 1 }
-              : item
-          )
-          .filter(item => item.quantity > 0) // Remove if quantity becomes 0
-      );
+    if (!cropInInventoryItem || cropInInventoryItem.quantity < 1) {
+      toast({ 
+          title: `Not Enough ${requiredCrop.name}s!`, 
+          description: `You need 1 ${requiredCrop.name} to feed ${neittType.name}.`, 
+          variant: "destructive" 
+      });
+      return;
+    }
 
-      const updatedNeitts = [...prevOwnedNeitts];
-      updatedNeitts[neittIndex] = {
-        ...neittInstance,
-        nitsLeftToProduce: neittType.productionCapacity,
-        lastProductionCycleStartTime: Date.now(),
-      };
+    // Consume the crop
+    setHarvestedInventory(prevInventory =>
+      prevInventory
+        .map(item =>
+          item.cropId === requiredCrop.id
+            ? { ...item, quantity: item.quantity - 1 }
+            : item
+        )
+        .filter(item => item.quantity > 0)
+    );
 
-      toast({ title: `Fed ${neittType.name}!`, description: `Used 1 ${requiredCrop.name}. It will now produce ${neittType.productionCapacity} Nits.` });
-      return updatedNeitts;
-    });
-  }, [toast, harvestedInventory]);
+    // Update Neitt state
+    setOwnedNeitts(prevOwnedNeitts => 
+      prevOwnedNeitts.map(n => 
+        n.instanceId === instanceId 
+          ? {
+              ...n,
+              nitsLeftToProduce: neittType.productionCapacity,
+              lastProductionCycleStartTime: Date.now(),
+            }
+          : n
+      )
+    );
+
+    // Call toast *after* state updates have been scheduled
+    toast({ title: `Fed ${neittType.name}!`, description: `Used 1 ${requiredCrop.name}. It will now produce ${neittType.productionCapacity} Nits.` });
+  }, [ownedNeitts, harvestedInventory, toast]);
 
 
   const handleSellNit = useCallback((nitIdToSell: string, quantity: number) => {
@@ -570,7 +575,8 @@ export default function HarvestClickerPage() {
     if (isClient) {
       loadGame();
     }
-  }, [isClient, loadGame]); // Added loadGame as a dependency
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isClient]); // loadGame is intentionally not in deps to avoid re-loading on every render after initial load.
 
   useEffect(() => {
     if (isClient) {
@@ -588,29 +594,32 @@ export default function HarvestClickerPage() {
   useEffect(() => {
     if (isClient) {
         const expectedPlotCount = upgrades.expandFarm ? INITIAL_NUM_PLOTS + PLOT_EXPANSION_AMOUNT : INITIAL_NUM_PLOTS;
-        if (plots.length !== expectedPlotCount) {
-            let currentPlotsState = [...plots]; // Use a copy from state
-            if (currentPlotsState.length < expectedPlotCount) {
-                const numToAdd = expectedPlotCount - currentPlotsState.length;
-                const newGeneratedPlots = Array.from({ length: numToAdd }, (_, i) => ({ // Renamed variable
-                    id: `plot-autogen-${currentPlotsState.length + i + 1}`, // Use currentPlotsState.length for unique IDs
-                    isHarvestable: false,
+        // Only run if plots actually need changing to prevent infinite loops if plots was a dep
+        if (plots.length !== expectedPlotCount) { 
+            setPlots(currentPlots => { // Use updater form to ensure we use the latest plot state
+                let newPlotsArray = [...currentPlots];
+                if (newPlotsArray.length < expectedPlotCount) {
+                    const numToAdd = expectedPlotCount - newPlotsArray.length;
+                    const newGeneratedPlots = Array.from({ length: numToAdd }, (_, i) => ({
+                        id: `plot-autogen-${newPlotsArray.length + i + 1}`,
+                        isHarvestable: false,
+                    }));
+                    newPlotsArray = [...newPlotsArray, ...newGeneratedPlots];
+                } else { // plots.length > expectedPlotCount
+                    newPlotsArray = newPlotsArray.slice(0, expectedPlotCount);
+                }
+                
+                // Re-ID plots to ensure consistent plot IDs like plot-1, plot-2, etc.
+                return newPlotsArray.map((plot, index) => ({
+                    ...plot,
+                    id: `plot-${index + 1}` 
                 }));
-                currentPlotsState = [...currentPlotsState, ...newGeneratedPlots];
-            } else { // plots.length > expectedPlotCount
-                currentPlotsState = currentPlotsState.slice(0, expectedPlotCount);
-            }
-            
-            // Re-ID plots to ensure consistent plot IDs like plot-1, plot-2, etc.
-            // This helps keep plot data associated correctly if plots are removed from the end.
-            const reIdPlots = currentPlotsState.map((plot, index) => ({
-                ...plot,
-                id: `plot-${index + 1}` 
-            }));
-            setPlots(reIdPlots);
+            });
         }
     }
-  }, [isClient, upgrades.expandFarm, plots]); // Added `plots` as a dependency
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isClient, upgrades.expandFarm]); // plots removed from dependency to avoid loop, using updater form of setPlots
+
 
   if (!isClient) {
     return (
@@ -686,3 +695,4 @@ export default function HarvestClickerPage() {
     </div>
   );
 }
+
