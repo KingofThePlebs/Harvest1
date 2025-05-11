@@ -67,7 +67,7 @@ import tomatoPlot5Img from '@/images/crops/tomato/plot_stage_5.png';
 
 // --- Cucumber Images ---
 import cucumberSeedImg from '@/images/crops/cucumber/seed.png';
-import cucumberHarvestedImg from '@/images/crops/cucumber/harvested.png';
+// import cucumberHarvestedImg from '@/images/crops/cucumber/harvested.png'; // Removed due to Module Not Found
 import cucumberPlot1Img from '@/images/crops/cucumber/plot_stage_1.png';
 import cucumberPlot2Img from '@/images/crops/cucumber/plot_stage_2.png';
 import cucumberPlot3Img from '@/images/crops/cucumber/plot_stage_3.png';
@@ -102,16 +102,16 @@ import strawberryPlot5Img from '@/images/crops/strawberry/plot_stage_5.png';
 // import bellPepperPlot5Img from '@/images/crops/bellPepper/plot_stage_5.png'; // Removed due to Module Not Found
 
 // --- Corn Images ---
-import cornSeedImg from '@/images/crops/corn/seed.png';
-import cornHarvestedImg from '@/images/crops/corn/harvested.png';
-import cornPlot1Img from '@/images/crops/corn/plot_stage_1.png';
-import cornPlot2Img from '@/images/crops/corn/plot_stage_2.png';
-import cornPlot3Img from '@/images/crops/corn/plot_stage_3.png';
-import cornPlot4Img from '@/images/crops/corn/plot_stage_4.png';
-import cornPlot5Img from '@/images/crops/corn/plot_stage_5.png';
+// import cornSeedImg from '@/images/crops/corn/seed.png'; // Removed due to Module Not Found
+// import cornHarvestedImg from '@/images/crops/corn/harvested.png'; // Removed due to Module Not Found
+// import cornPlot1Img from '@/images/crops/corn/plot_stage_1.png'; // Removed due to Module Not Found
+// import cornPlot2Img from '@/images/crops/corn/plot_stage_2.png'; // Removed due to Module Not Found
+// import cornPlot3Img from '@/images/crops/corn/plot_stage_3.png'; // Removed due to Module Not Found
+// import cornPlot4Img from '@/images/crops/corn/plot_stage_4.png'; // Removed due to Module Not Found
+// import cornPlot5Img from '@/images/crops/corn/plot_stage_5.png'; // Removed due to Module Not Found
 
 // --- Cabbage Images ---
-import cabbageSeedImg from '@/images/crops/cabbage/seed.png';
+// import cabbageSeedImg from '@/images/crops/cabbage/seed.png'; // Removed due to Module Not Found
 // import cabbageHarvestedImg from '@/images/crops/cabbage/harvested.png'; // Removed due to Module Not Found
 // import cabbagePlot1Img from '@/images/crops/cabbage/plot_stage_1.png'; // Removed due to Module Not Found
 // import cabbagePlot2Img from '@/images/crops/cabbage/plot_stage_2.png'; // Removed due to Module Not Found
@@ -282,7 +282,7 @@ export const CROPS_DATA: Crop[] = [
     seedPrice: 3,
     seedShopImageUrl: cucumberSeedImg, 
     dataAiHintSeedShop: 'cucumber seedpacket',
-    harvestedCropImageUrl: cucumberHarvestedImg, 
+    // harvestedCropImageUrl: cucumberHarvestedImg, // Removed due to Module Not Found
     dataAiHintHarvestedCrop: 'cucumber fruit',
     farmPlotImageUrls: [
       cucumberPlot1Img,
@@ -356,16 +356,16 @@ export const CROPS_DATA: Crop[] = [
     growTime: 20 * 1000,
     sellPrice: 25,
     seedPrice: 5,
-    seedShopImageUrl: cornSeedImg, 
+    // seedShopImageUrl: cornSeedImg, // Removed due to Module Not Found
     dataAiHintSeedShop: 'corn seedpacket',
-    harvestedCropImageUrl: cornHarvestedImg, 
+    // harvestedCropImageUrl: cornHarvestedImg, // Removed due to Module Not Found
     dataAiHintHarvestedCrop: 'corn cob',
     farmPlotImageUrls: [
-      cornPlot1Img,
-      cornPlot2Img,
-      cornPlot3Img,
-      cornPlot4Img,
-      cornPlot5Img,
+      // cornPlot1Img, // Removed due to Module Not Found
+      // cornPlot2Img, // Removed due to Module Not Found
+      // cornPlot3Img, // Removed due to Module Not Found
+      // cornPlot4Img, // Removed due to Module Not Found
+      // cornPlot5Img, // Removed due to Module Not Found
     ],
     dataAiHintFarmPlot: 'corn stalk',
   },
@@ -375,7 +375,7 @@ export const CROPS_DATA: Crop[] = [
     growTime: 22 * 1000,
     sellPrice: 28,
     seedPrice: 6,
-    seedShopImageUrl: cabbageSeedImg, 
+    // seedShopImageUrl: cabbageSeedImg, // Removed due to Module Not Found
     dataAiHintSeedShop: 'cabbage seedpacket',
     // harvestedCropImageUrl: cabbageHarvestedImg, // Removed due to Module Not Found
     dataAiHintHarvestedCrop: 'cabbage head',
@@ -427,6 +427,10 @@ export const CROPS_DATA: Crop[] = [
     dataAiHintFarmPlot: 'pumpkin plant',
   },
 ].sort((a, b) => a.seedPrice - b.seedPrice);
+
+
+
+
 
 
 
