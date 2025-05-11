@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { FC } from 'react';
@@ -51,7 +50,6 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
       
       updateGrowth(); 
       if (!isReadyToHarvest && effectiveGrowTime > 0) { 
-         // Update more frequently for smoother animation if grow time is short
          const updateInterval = Math.max(100, Math.min(effectiveGrowTime / 100, 500));
          intervalId = setInterval(updateGrowth, updateInterval); 
       }
@@ -83,60 +81,66 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
   const numStages = plantedCrop?.farmPlotImageUrls?.length ?? 0;
   let currentStageImageUrl: string | undefined;
 
-  if (plantedCrop && numStages > 0) {
-    // Ensure progress is capped at 100 for stage calculation, especially if isReadyToHarvest is set early
+  if (plantedCrop && numStages > 0 && plantedCrop.farmPlotImageUrls) {
     const currentDisplayProgress = isReadyToHarvest ? 100 : progress;
     let stageIndex = Math.floor(currentDisplayProgress / (100 / numStages));
-    stageIndex = Math.min(stageIndex, numStages - 1); // Ensure index is within bounds (0 to numStages-1)
-    stageIndex = Math.max(0, stageIndex); // Ensure index is not negative
-    currentStageImageUrl = plantedCrop.farmPlotImageUrls?.[stageIndex];
+    stageIndex = Math.min(stageIndex, numStages - 1); 
+    stageIndex = Math.max(0, stageIndex); 
+    currentStageImageUrl = plantedCrop.farmPlotImageUrls[stageIndex] as string | undefined;
   }
 
 
   return (
-    <Card className="w-full aspect-square flex flex-col items-center justify-center shadow-lg hover:shadow-xl transition-shadow duration-300 bg-background/70">
-      <CardHeader className="p-2 pt-4 text-center">
-        <CardTitle className="text-sm truncate">{plantedCrop?.name || 'Empty Plot'}</CardTitle>
-      </CardHeader>
-      <CardContent className="flex-grow flex flex-col items-center justify-center p-2 w-full">
-        {plantedCrop ? (
-          <div className="flex flex-col items-center justify-center space-y-2 w-full">
-            {currentStageImageUrl ? (
-              <Image 
-                src={currentStageImageUrl} 
-                alt={plantedCrop.name} 
-                width={48} 
-                height={48} 
-                className="object-contain rounded-md"
-                data-ai-hint={plantedCrop.dataAiHintFarmPlot || plantedCrop.dataAiHint}
-              />
-            ) : CropIconComponent ? (
-              <CropIconComponent className="w-12 h-12 text-green-600" />
-            ) : <Leaf className="w-12 h-12 text-gray-400" /> }
-            {!isReadyToHarvest && (
-              <Progress value={progress} className="w-3/4 h-3 transition-all duration-100" />
-            )}
-            {isReadyToHarvest && (
-              <div className="text-xs font-semibold text-green-500 flex items-center animate-pulse">
-                <Zap className="w-4 h-4 mr-1" /> Ready!
-              </div>
-            )}
-          </div>
-        ) : (
-          <Leaf className="w-12 h-12 text-muted-foreground opacity-50" />
-        )}
-      </CardContent>
-      <CardFooter className="p-2 pb-4 w-full">
-        <Button 
-          onClick={handlePlotClick} 
-          disabled={(!plantedCrop && !selectedSeedId) || (plantedCrop && !isReadyToHarvest && progress < 100)}
-          className="w-full text-xs h-8"
-          variant={isReadyToHarvest ? "default" : "secondary"}
-        >
-          {isReadyToHarvest ? 'Harvest' : plantedCrop ? 'Growing...' : selectedSeedId ? 'Plant' : 'Select Seed'}
-        </Button>
-      </CardFooter>
-    </Card>
+    <div
+      className="relative w-full"
+      style={{
+        paddingBottom: !plantedCrop ? 'calc(100% + 16px)' : '100%',
+      }}
+    >
+      <Card className="absolute inset-0 w-full h-full flex flex-col items-center justify-center shadow-lg hover:shadow-xl transition-shadow duration-300 bg-background/70">
+        <CardHeader className="p-2 pt-4 text-center">
+          <CardTitle className="text-sm truncate">{plantedCrop?.name || 'Empty Plot'}</CardTitle>
+        </CardHeader>
+        <CardContent className="flex-grow flex flex-col items-center justify-center p-2 w-full">
+          {plantedCrop ? (
+            <div className="flex flex-col items-center justify-center space-y-2 w-full">
+              {currentStageImageUrl ? (
+                <Image 
+                  src={currentStageImageUrl} 
+                  alt={plantedCrop.name} 
+                  width={48} 
+                  height={48} 
+                  className="object-contain rounded-md"
+                  data-ai-hint={plantedCrop.dataAiHintFarmPlot || plantedCrop.dataAiHint}
+                />
+              ) : CropIconComponent ? (
+                <CropIconComponent className="w-12 h-12 text-green-600" />
+              ) : <Leaf className="w-12 h-12 text-gray-400" /> }
+              {!isReadyToHarvest && (
+                <Progress value={progress} className="w-3/4 h-3 transition-all duration-100" />
+              )}
+              {isReadyToHarvest && (
+                <div className="text-xs font-semibold text-green-500 flex items-center animate-pulse">
+                  <Zap className="w-4 h-4 mr-1" /> Ready!
+                </div>
+              )}
+            </div>
+          ) : (
+            <Leaf className="w-12 h-12 text-muted-foreground opacity-50" />
+          )}
+        </CardContent>
+        <CardFooter className="p-2 pb-4 w-full">
+          <Button 
+            onClick={handlePlotClick} 
+            disabled={(!plantedCrop && !selectedSeedId) || (plantedCrop && !isReadyToHarvest && progress < 100)}
+            className="w-full text-xs h-8"
+            variant={isReadyToHarvest ? "default" : "secondary"}
+          >
+            {isReadyToHarvest ? 'Harvest' : plantedCrop ? 'Growing...' : selectedSeedId ? 'Plant' : 'Select Seed'}
+          </Button>
+        </CardFooter>
+      </Card>
+    </div>
   );
 };
 

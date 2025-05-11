@@ -5,11 +5,11 @@ import { Carrot } from 'lucide-react'; // Lucide icons can still be fallbacks
 // --- Carrot Images ---
 import carrotSeedImg from '@/images/crops/carrot/seed.png';
 import carrotHarvestedImg from '@/images/crops/carrot/harvested.png';
-import carrotPlot1Img from '@/images/crops/carrot/plot_stage_1.png';
-import carrotPlot2Img from '@/images/crops/carrot/plot_stage_2.png';
-import carrotPlot3Img from '@/images/crops/carrot/plot_stage_3.png';
-import carrotPlot4Img from '@/images/crops/carrot/plot_stage_4.png';
-import carrotPlot5Img from '@/images/crops/carrot/plot_stage_5.png';
+import carrotPlot1Img from '@/images/crops/carrot/plant1.png';
+import carrotPlot2Img from '@/images/crops/carrot/plant2.png';
+import carrotPlot3Img from '@/images/crops/carrot/plant3.png';
+import carrotPlot4Img from '@/images/crops/carrot/plant4.png';
+import carrotPlot5Img from '@/images/crops/carrot/plant5.png';
 
 // Radish Images - Removed
 // Wheat Images - Removed
