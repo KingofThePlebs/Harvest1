@@ -1,3 +1,4 @@
+
 import type { LucideIcon } from 'lucide-react';
 
 export interface Crop {
@@ -9,14 +10,14 @@ export interface Crop {
   icon?: LucideIcon; // For crops that use Lucide icons
 
   // Specific images for different contexts
-  seedShopImageUrl?: string; // Image shown in the seed shop (e.g., seed packet)
-  inventoryImageUrl?: string; // Image shown in player's inventory (e.g., the harvested crop or seed icon)
+  seedShopImageUrl?: string; // Image shown in the seed shop AND in "My Seeds" inventory (e.g., seed packet)
+  harvestedCropImageUrl?: string; // Image shown in sell market inventory (e.g., the harvested crop)
   farmPlotImageUrl?: string; // Image shown when planted on the farm (e.g., the growing plant)
 
   // Corresponding AI hints for image generation
-  dataAiHintSeedShop?: string;
-  dataAiHintInventory?: string;
-  dataAiHintFarmPlot?: string;
+  dataAiHintSeedShop?: string; // For seed packet/bag
+  dataAiHintHarvestedCrop?: string; // For harvested crop
+  dataAiHintFarmPlot?: string; // For growing plant
 
   // Fallback if specific images are not provided (less preferred now)
   imageUrl?: string; 

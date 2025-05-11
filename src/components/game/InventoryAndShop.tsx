@@ -66,8 +66,8 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                                     ${isSelected ? 'ring-2 ring-primary-foreground ring-offset-2 ring-offset-primary' : ''}`}
                     >
                       <div className="flex items-center space-x-3">
-                        {crop.inventoryImageUrl ? (
-                          <Image src={crop.inventoryImageUrl} alt={crop.name} width={32} height={32} className="object-contain rounded-md" data-ai-hint={crop.dataAiHintInventory || crop.dataAiHint} />
+                        {crop.seedShopImageUrl ? ( // Use seedShopImageUrl for My Seeds tab
+                          <Image src={crop.seedShopImageUrl} alt={crop.name} width={32} height={32} className="object-contain rounded-md" data-ai-hint={crop.dataAiHintSeedShop || crop.dataAiHint} />
                         ) : IconComponent ? (
                           <IconComponent className="w-8 h-8 text-green-600" />
                         ) : <Leaf className="w-8 h-8 text-gray-400" />}
@@ -114,8 +114,8 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                   return (
                     <li key={item.cropId} className="flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm">
                       <div className="flex items-center space-x-3">
-                        {crop.inventoryImageUrl ? (
-                          <Image src={crop.inventoryImageUrl} alt={crop.name} width={32} height={32} className="object-contain rounded-md" data-ai-hint={crop.dataAiHintInventory || crop.dataAiHint}/>
+                        {crop.harvestedCropImageUrl ? ( // Use harvestedCropImageUrl for Sell Market tab
+                          <Image src={crop.harvestedCropImageUrl} alt={crop.name} width={32} height={32} className="object-contain rounded-md" data-ai-hint={crop.dataAiHintHarvestedCrop || crop.dataAiHint}/>
                         ) : IconComponent ? (
                           <IconComponent className="w-8 h-8 text-green-600" />
                         ) : <Leaf className="w-8 h-8 text-gray-400" />}
