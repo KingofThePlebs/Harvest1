@@ -182,9 +182,17 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                                   <p className="text-xs text-muted-foreground">Sell Price: <Coins className="inline w-3 h-3 mr-0.5" />{effectiveSellPrice} each</p>
                                 </div>
                               </div>
-                              <Button size="sm" onClick={() => onSellCrop(item.cropId, 1)} className="text-xs h-8">
-                                Sell 1
-                              </Button>
+                              <div className="flex items-center space-x-1">
+                                <Button size="sm" onClick={() => onSellCrop(item.cropId, 1)} className="text-xs h-7 px-2" disabled={item.quantity < 1}>
+                                  Sell 1
+                                </Button>
+                                <Button size="sm" onClick={() => onSellCrop(item.cropId, 10)} className="text-xs h-7 px-2" disabled={item.quantity < 10}>
+                                  Sell 10
+                                </Button>
+                                <Button size="sm" onClick={() => onSellCrop(item.cropId, item.quantity)} className="text-xs h-7 px-2" disabled={item.quantity < 1}>
+                                  Sell All
+                                </Button>
+                              </div>
                             </li>
                           );
                         })}
@@ -213,9 +221,17 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                                   <p className="text-xs text-muted-foreground">Sell Price: <Coins className="inline w-3 h-3 mr-0.5" />{nit.sellPrice} each</p>
                                 </div>
                               </div>
-                              <Button size="sm" onClick={() => onSellNit(item.nitId, 1)} className="text-xs h-8">
-                                Sell 1
-                              </Button>
+                              <div className="flex items-center space-x-1">
+                                <Button size="sm" onClick={() => onSellNit(item.nitId, 1)} className="text-xs h-7 px-2" disabled={item.quantity < 1}>
+                                  Sell 1
+                                </Button>
+                                <Button size="sm" onClick={() => onSellNit(item.nitId, 10)} className="text-xs h-7 px-2" disabled={item.quantity < 10}>
+                                  Sell 10
+                                </Button>
+                                <Button size="sm" onClick={() => onSellNit(item.nitId, item.quantity)} className="text-xs h-7 px-2" disabled={item.quantity < 1}>
+                                  Sell All
+                                </Button>
+                              </div>
                             </li>
                           );
                         })}
