@@ -9,12 +9,12 @@ export const CROPS_DATA: Crop[] = [
     growTime: 5 * 1000, // 5 seconds
     sellPrice: 5,
     seedPrice: 1,
-    icon: Carrot, 
-    seedShopImageUrl: 'https://picsum.photos/seed/carrot-packet/64/64', // Seed packet
+    icon: Carrot,
+    seedShopImageUrl: '/images/crops/carrot/seed.png', // Seed packet
     dataAiHintSeedShop: 'carrot seedpacket',
-    harvestedCropImageUrl: 'https://picsum.photos/seed/carrot-item/64/64', // Harvested carrot
+    harvestedCropImageUrl: '/images/crops/carrot/harvested.png', // Harvested carrot
     dataAiHintHarvestedCrop: 'carrot vegetable',
-    farmPlotImageUrl: 'https://picsum.photos/seed/carrot-plant/64/64', // Carrot plant
+    farmPlotImageUrl: '/images/crops/carrot/plot.png', // Carrot plant
     dataAiHintFarmPlot: 'carrot plant',
   },
   {
@@ -23,11 +23,11 @@ export const CROPS_DATA: Crop[] = [
     growTime: 6 * 1000,
     sellPrice: 7,
     seedPrice: 1,
-    seedShopImageUrl: 'https://picsum.photos/seed/radish-packet/64/64', // Seed packet
+    seedShopImageUrl: '/images/crops/radish/seed.png', // Seed packet
     dataAiHintSeedShop: 'radish seedpacket',
-    harvestedCropImageUrl: 'https://picsum.photos/seed/radish-item/64/64', // Harvested radish
+    harvestedCropImageUrl: '/images/crops/radish/harvested.png', // Harvested radish
     dataAiHintHarvestedCrop: 'radish vegetable',
-    farmPlotImageUrl: 'https://picsum.photos/seed/radish-plant/64/64', // Radish plant
+    farmPlotImageUrl: '/images/crops/radish/plot.png', // Radish plant
     dataAiHintFarmPlot: 'radish plant',
   },
   {
@@ -36,12 +36,12 @@ export const CROPS_DATA: Crop[] = [
     growTime: 10 * 1000, // 10 seconds
     sellPrice: 10,
     seedPrice: 2,
-    icon: Wheat, 
-    seedShopImageUrl: 'https://picsum.photos/seed/wheat-seedbag/64/64', // Seed bag
+    icon: Wheat,
+    seedShopImageUrl: '/images/crops/wheat/seed.png', // Seed bag
     dataAiHintSeedShop: 'wheat seedbag',
-    harvestedCropImageUrl: 'https://picsum.photos/seed/wheat-sheaf/64/64', // Harvested wheat sheaf
+    harvestedCropImageUrl: '/images/crops/wheat/harvested.png', // Harvested wheat sheaf
     dataAiHintHarvestedCrop: 'wheat sheaf',
-    farmPlotImageUrl: 'https://picsum.photos/seed/wheat-field/64/64', // Wheat plant/stalk
+    farmPlotImageUrl: '/images/crops/wheat/plot.png', // Wheat plant/stalk
     dataAiHintFarmPlot: 'wheat stalk',
   },
   {
@@ -50,11 +50,11 @@ export const CROPS_DATA: Crop[] = [
     growTime: 8 * 1000, // 8 seconds
     sellPrice: 8,
     seedPrice: 2,
-    seedShopImageUrl: 'https://picsum.photos/seed/potato-seedbag/64/64', // Seed bag
+    seedShopImageUrl: '/images/crops/potato/seed.png', // Seed bag
     dataAiHintSeedShop: 'potato seedbag',
-    harvestedCropImageUrl: 'https://picsum.photos/seed/potato-item/64/64', // Harvested potato
+    harvestedCropImageUrl: '/images/crops/potato/harvested.png', // Harvested potato
     dataAiHintHarvestedCrop: 'potato vegetable',
-    farmPlotImageUrl: 'https://picsum.photos/seed/potato-sprout/64/64',  // Potato plant
+    farmPlotImageUrl: '/images/crops/potato/plot.png',  // Potato plant
     dataAiHintFarmPlot: 'potato plant',
   },
   {
@@ -63,11 +63,11 @@ export const CROPS_DATA: Crop[] = [
     growTime: 10 * 1000,
     sellPrice: 9,
     seedPrice: 2,
-    seedShopImageUrl: 'https://picsum.photos/seed/onion-set/64/64', // Onion sets (seeds)
+    seedShopImageUrl: '/images/crops/onion/seed.png', // Onion sets (seeds)
     dataAiHintSeedShop: 'onion sets',
-    harvestedCropImageUrl: 'https://picsum.photos/seed/onion-bulb/64/64', // Harvested onion bulb
+    harvestedCropImageUrl: '/images/crops/onion/harvested.png', // Harvested onion bulb
     dataAiHintHarvestedCrop: 'onion bulb',
-    farmPlotImageUrl: 'https://picsum.photos/seed/onion-green/64/64', // Onion plant
+    farmPlotImageUrl: '/images/crops/onion/plot.png', // Onion plant
     dataAiHintFarmPlot: 'onion plant',
   },
   {
@@ -76,11 +76,11 @@ export const CROPS_DATA: Crop[] = [
     growTime: 15 * 1000, // 15 seconds
     sellPrice: 15,
     seedPrice: 3,
-    seedShopImageUrl: 'https://picsum.photos/seed/tomato-seedpacket/64/64', // Seed packet
+    seedShopImageUrl: '/images/crops/tomato/seed.png', // Seed packet
     dataAiHintSeedShop: 'tomato seedpacket',
-    harvestedCropImageUrl: 'https://picsum.photos/seed/tomato-fruit/64/64',  // Harvested tomato
+    harvestedCropImageUrl: '/images/crops/tomato/harvested.png',  // Harvested tomato
     dataAiHintHarvestedCrop: 'tomato fruit',
-    farmPlotImageUrl: 'https://picsum.photos/seed/tomato-vine/64/64', // Tomato plant
+    farmPlotImageUrl: '/images/crops/tomato/plot.png', // Tomato plant
     dataAiHintFarmPlot: 'tomato plant',
   },
   {
@@ -89,11 +89,11 @@ export const CROPS_DATA: Crop[] = [
     growTime: 16 * 1000,
     sellPrice: 18,
     seedPrice: 3,
-    seedShopImageUrl: 'https://picsum.photos/seed/broccoli-seeds/64/64', // Seed packet
+    seedShopImageUrl: '/images/crops/broccoli/seed.png', // Seed packet
     dataAiHintSeedShop: 'broccoli seeds',
-    harvestedCropImageUrl: 'https://picsum.photos/seed/broccoli-floret/64/64', // Harvested broccoli
+    harvestedCropImageUrl: '/images/crops/broccoli/harvested.png', // Harvested broccoli
     dataAiHintHarvestedCrop: 'broccoli floret',
-    farmPlotImageUrl: 'https://picsum.photos/seed/broccoli-head/64/64', // Broccoli plant
+    farmPlotImageUrl: '/images/crops/broccoli/plot.png', // Broccoli plant
     dataAiHintFarmPlot: 'broccoli plant',
   },
   {
@@ -102,11 +102,11 @@ export const CROPS_DATA: Crop[] = [
     growTime: 14 * 1000,
     sellPrice: 16,
     seedPrice: 3,
-    seedShopImageUrl: 'https://picsum.photos/seed/cucumber-pack/64/64', // Seed packet
+    seedShopImageUrl: '/images/crops/cucumber/seed.png', // Seed packet
     dataAiHintSeedShop: 'cucumber seedpacket',
-    harvestedCropImageUrl: 'https://picsum.photos/seed/cucumber-slice/64/64', // Harvested cucumber
+    harvestedCropImageUrl: '/images/crops/cucumber/harvested.png', // Harvested cucumber
     dataAiHintHarvestedCrop: 'cucumber fruit',
-    farmPlotImageUrl: 'https://picsum.photos/seed/cucumber-vine/64/64', // Cucumber plant
+    farmPlotImageUrl: '/images/crops/cucumber/plot.png', // Cucumber plant
     dataAiHintFarmPlot: 'cucumber plant',
   },
   {
@@ -115,11 +115,11 @@ export const CROPS_DATA: Crop[] = [
     growTime: 12 * 1000,
     sellPrice: 11,
     seedPrice: 3,
-    seedShopImageUrl: 'https://picsum.photos/seed/garlic-seed/64/64', // Garlic seed clove
+    seedShopImageUrl: '/images/crops/garlic/seed.png', // Garlic seed clove
     dataAiHintSeedShop: 'garlic seedclove',
-    harvestedCropImageUrl: 'https://picsum.photos/seed/garlic-clove/64/64', // Harvested garlic bulb
+    harvestedCropImageUrl: '/images/crops/garlic/harvested.png', // Harvested garlic bulb
     dataAiHintHarvestedCrop: 'garlic bulb',
-    farmPlotImageUrl: 'https://picsum.photos/seed/garlic-scape/64/64', // Garlic plant
+    farmPlotImageUrl: '/images/crops/garlic/plot.png', // Garlic plant
     dataAiHintFarmPlot: 'garlic plant',
   },
   {
@@ -128,11 +128,11 @@ export const CROPS_DATA: Crop[] = [
     growTime: 12 * 1000, // 12 seconds
     sellPrice: 12,
     seedPrice: 4,
-    seedShopImageUrl: 'https://picsum.photos/seed/strawberry-seedpacket/64/64', // Seed packet
+    seedShopImageUrl: '/images/crops/strawberry/seed.png', // Seed packet
     dataAiHintSeedShop: 'strawberry seedpacket',
-    harvestedCropImageUrl: 'https://picsum.photos/seed/strawberry-fruit/64/64', // Harvested strawberry
+    harvestedCropImageUrl: '/images/crops/strawberry/harvested.png', // Harvested strawberry
     dataAiHintHarvestedCrop: 'strawberry fruit',
-    farmPlotImageUrl: 'https://picsum.photos/seed/strawberry-bush/64/64', // Strawberry plant
+    farmPlotImageUrl: '/images/crops/strawberry/plot.png', // Strawberry plant
     dataAiHintFarmPlot: 'strawberry plant',
   },
   {
@@ -141,24 +141,24 @@ export const CROPS_DATA: Crop[] = [
     growTime: 18 * 1000,
     sellPrice: 20,
     seedPrice: 4,
-    seedShopImageUrl: 'https://picsum.photos/seed/pepper-seeds/64/64', // Seed packet
+    seedShopImageUrl: '/images/crops/bellPepper/seed.png', // Seed packet
     dataAiHintSeedShop: 'pepper seedpacket',
-    harvestedCropImageUrl: 'https://picsum.photos/seed/bellpepper-item/64/64', // Harvested bell pepper
+    harvestedCropImageUrl: '/images/crops/bellPepper/harvested.png', // Harvested bell pepper
     dataAiHintHarvestedCrop: 'bell pepper',
-    farmPlotImageUrl: 'https://picsum.photos/seed/pepper-plant/64/64', // Pepper plant
+    farmPlotImageUrl: '/images/crops/bellPepper/plot.png', // Pepper plant
     dataAiHintFarmPlot: 'pepper plant',
   },
   {
     id: 'corn',
     name: 'Corn',
-    growTime: 20 * 1000, 
+    growTime: 20 * 1000,
     sellPrice: 25,
     seedPrice: 5,
-    seedShopImageUrl: 'https://picsum.photos/seed/corn-seedpacket/64/64', // Seed packet
+    seedShopImageUrl: '/images/crops/corn/seed.png', // Seed packet
     dataAiHintSeedShop: 'corn seedpacket',
-    harvestedCropImageUrl: 'https://picsum.photos/seed/corn-cob/64/64', // Harvested corn cob
+    harvestedCropImageUrl: '/images/crops/corn/harvested.png', // Harvested corn cob
     dataAiHintHarvestedCrop: 'corn cob',
-    farmPlotImageUrl: 'https://picsum.photos/seed/corn-stalk/64/64', // Corn stalk
+    farmPlotImageUrl: '/images/crops/corn/plot.png', // Corn stalk
     dataAiHintFarmPlot: 'corn stalk',
   },
   {
@@ -167,11 +167,11 @@ export const CROPS_DATA: Crop[] = [
     growTime: 22 * 1000,
     sellPrice: 28,
     seedPrice: 6,
-    seedShopImageUrl: 'https://picsum.photos/seed/cabbage-seedpacket/64/64', // Seed packet
+    seedShopImageUrl: '/images/crops/cabbage/seed.png', // Seed packet
     dataAiHintSeedShop: 'cabbage seedpacket',
-    harvestedCropImageUrl: 'https://picsum.photos/seed/cabbage-head/64/64', // Harvested cabbage
+    harvestedCropImageUrl: '/images/crops/cabbage/harvested.png', // Harvested cabbage
     dataAiHintHarvestedCrop: 'cabbage head',
-    farmPlotImageUrl: 'https://picsum.photos/seed/cabbage-leaf/64/64', // Cabbage plant
+    farmPlotImageUrl: '/images/crops/cabbage/plot.png', // Cabbage plant
     dataAiHintFarmPlot: 'cabbage plant',
   },
   {
@@ -180,11 +180,11 @@ export const CROPS_DATA: Crop[] = [
     growTime: 25 * 1000,
     sellPrice: 30,
     seedPrice: 7,
-    seedShopImageUrl: 'https://picsum.photos/seed/eggplant-seedpacket/64/64', // Seed packet
+    seedShopImageUrl: '/images/crops/eggplant/seed.png', // Seed packet
     dataAiHintSeedShop: 'eggplant seedpacket',
-    harvestedCropImageUrl: 'https://picsum.photos/seed/eggplant-veg/64/64', // Harvested eggplant
+    harvestedCropImageUrl: '/images/crops/eggplant/harvested.png', // Harvested eggplant
     dataAiHintHarvestedCrop: 'eggplant vegetable',
-    farmPlotImageUrl: 'https://picsum.photos/seed/eggplant-bush/64/64', // Eggplant plant
+    farmPlotImageUrl: '/images/crops/eggplant/plot.png', // Eggplant plant
     dataAiHintFarmPlot: 'eggplant plant',
   },
   {
@@ -193,11 +193,11 @@ export const CROPS_DATA: Crop[] = [
     growTime: 30 * 1000,
     sellPrice: 40,
     seedPrice: 8,
-    seedShopImageUrl: 'https://picsum.photos/seed/pumpkin-seedpacket/64/64', // Seed packet
+    seedShopImageUrl: '/images/crops/pumpkin/seed.png', // Seed packet
     dataAiHintSeedShop: 'pumpkin seedpacket',
-    harvestedCropImageUrl: 'https://picsum.photos/seed/pumpkin-fruit/64/64', // Harvested pumpkin
+    harvestedCropImageUrl: '/images/crops/pumpkin/harvested.png', // Harvested pumpkin
     dataAiHintHarvestedCrop: 'pumpkin fruit',
-    farmPlotImageUrl: 'https://picsum.photos/seed/pumpkin-vine/64/64', // Pumpkin plant
+    farmPlotImageUrl: '/images/crops/pumpkin/plot.png', // Pumpkin plant
     dataAiHintFarmPlot: 'pumpkin plant',
   },
 ].sort((a, b) => a.seedPrice - b.seedPrice);

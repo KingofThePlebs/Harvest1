@@ -1,3 +1,4 @@
+
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -9,14 +10,15 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'picsum.photos',
-        port: '',
-        pathname: '/**',
-      },
-    ],
+    // Remote patterns are no longer needed if all images are local.
+    // If you still have other remote images, you can keep their patterns here.
+    // For example:
+    // remotePatterns: [
+    //   {
+    //     protocol: 'https',
+    //     hostname: 'some-other-domain.com',
+    //   },
+    // ],
   },
 };
 
