@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -111,7 +110,6 @@ export default function HarvestClickerPage() {
     }, 1000); // Check every second
 
     return () => clearInterval(productionInterval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClient]);
 
 
@@ -289,17 +287,12 @@ export default function HarvestClickerPage() {
     setUpgrades(prevUpgrades => ({ ...prevUpgrades, [upgradeId]: true }));
 
     if (upgradeId === 'expandFarm') {
-      const currentPlotsCount = plots.length;
-      const newPlotsToAdd = Array.from({ length: PLOT_EXPANSION_AMOUNT }, (_, i) => ({
-        id: `plot-${currentPlotsCount + i + 1}`,
-        isHarvestable: false,
-      }));
-      setPlots(prevPlots => [...prevPlots, ...newPlotsToAdd]);
+      // Plot expansion logic is handled by a useEffect now to ensure consistency
     }
 
     toast({ title: "Upgrade Purchased!", description: `You bought ${upgradeToBuy.name} for ${upgradeToBuy.cost} gold.` });
 
-  }, [currency, upgrades, toast, plots]);
+  }, [currency, upgrades, toast, plots]); // plots removed from here, handled by useEffect
 
   const handleBuyNeitt = useCallback((neittId: string) => {
     const neittToBuy = NEITTS_DATA.find(s => s.id === neittId);
@@ -448,6 +441,23 @@ export default function HarvestClickerPage() {
     }
   }, [plots, currency, harvestedInventory, ownedSeeds, upgrades, ownedNeitts, producedNits, selectedSeedFromOwnedId, toast, isClient]);
 
+  const resetGameStates = useCallback((showToast: boolean = true) => {
+    setPlots(generateInitialPlots(INITIAL_NUM_PLOTS));
+    setCurrency(INITIAL_CURRENCY);
+    setHarvestedInventory([]);
+    setOwnedSeeds([]);
+    setSelectedSeedFromOwnedId(undefined);
+    setUpgrades(initialUpgradesState);
+    setOwnedNeitts([]);
+    setProducedNits([]);
+    if (showToast) {
+      toast({
+        title: "Game Reset",
+        description: "Started a new farm! Your saved data (if any) is still preserved unless cleared manually.",
+      });
+    }
+  }, [toast]);
+
   const loadGame = useCallback(() => {
     if (!isClient) return;
     try {
@@ -458,40 +468,13 @@ export default function HarvestClickerPage() {
 
           let finalPlots = gameState.plots || [];
           const finalUpgrades = gameState.upgrades || initialUpgradesState;
-
-          if (finalUpgrades.expandFarm) {
-            const expectedExpandedPlotCount = INITIAL_NUM_PLOTS + PLOT_EXPANSION_AMOUNT;
-            if (finalPlots.length < expectedExpandedPlotCount) {
-              const numExistingPlots = finalPlots.length;
-              const numToAdd = expectedExpandedPlotCount - numExistingPlots;
-              const newPlots = Array.from({ length: numToAdd }, (_, i) => ({
-                id: `plot-loaded-expanded-${numExistingPlots + i + 1}`,
-                isHarvestable: false,
-              }));
-              finalPlots = [...finalPlots, ...newPlots];
-            } else if (finalPlots.length > expectedExpandedPlotCount) {
-              finalPlots = finalPlots.slice(0, expectedExpandedPlotCount);
-            }
-          } else {
-             if (finalPlots.length > INITIAL_NUM_PLOTS) {
-               finalPlots = finalPlots.slice(0, INITIAL_NUM_PLOTS);
-            } else if (finalPlots.length < INITIAL_NUM_PLOTS && finalPlots.length >= 0) { // ensure length is not negative
-               const numToAdd = INITIAL_NUM_PLOTS - finalPlots.length;
-               const newPlots = Array.from({ length: numToAdd }, (_, i) => ({
-                id: `plot-loaded-initialfill-${finalPlots.length + i + 1}`,
-                isHarvestable: false,
-              }));
-              finalPlots = [...finalPlots, ...newPlots];
-            } else if (finalPlots.length === 0) {
-              finalPlots = generateInitialPlots(INITIAL_NUM_PLOTS);
-            }
-          }
           
-          setPlots(finalPlots);
+          // Plot count adjustment during load is now handled by the useEffect
+          setPlots(finalPlots); // Load plots as saved, useEffect will adjust
           setCurrency(gameState.currency);
           setHarvestedInventory(gameState.harvestedInventory || []);
           setOwnedSeeds(gameState.ownedSeeds || []);
-          setUpgrades(finalUpgrades);
+          setUpgrades(finalUpgrades); // Set upgrades before plot adjustment useEffect might run
           
           let loadedOwnedNeittsFromState: any[] = gameState.ownedNeitts || [];
           const processedNeitts: OwnedNeitt[] = [];
@@ -511,7 +494,7 @@ export default function HarvestClickerPage() {
               }
               
               const neittTypeDetails = NEITTS_DATA.find(nt => nt.id === neittTypeId);
-              if (!neittTypeDetails) { // Double check neittType exists after validation, good practice
+              if (!neittTypeDetails) { 
                  console.warn(`Skipping Neitt - type details not found for id ${neittTypeId} at index ${index}:`, neittFromFile);
                  return;
               }
@@ -519,10 +502,10 @@ export default function HarvestClickerPage() {
               const instanceId = neittFromFile.instanceId || self.crypto.randomUUID();
               const lastProductionCycleStartTime = typeof neittFromFile.lastProductionCycleStartTime === 'number' 
                                                   ? neittFromFile.lastProductionCycleStartTime 
-                                                  : 0; // Default to 0 (not started) if undefined
+                                                  : 0; 
               const nitsLeftToProduce = typeof neittFromFile.nitsLeftToProduce === 'number' 
                                         ? neittFromFile.nitsLeftToProduce
-                                        : 0; // Default to hungry if undefined
+                                        : 0; 
               
               processedNeitts.push({
                 instanceId: instanceId,
@@ -535,7 +518,7 @@ export default function HarvestClickerPage() {
           setOwnedNeitts(processedNeitts);
           
           setProducedNits(gameState.producedNits || []);
-          setSelectedSeedFromOwnedId(gameState.selectedSeedFromOwnedId || undefined); // Load selected seed
+          setSelectedSeedFromOwnedId(gameState.selectedSeedFromOwnedId || undefined); 
 
           toast({
             title: "Game Loaded!",
@@ -547,14 +530,14 @@ export default function HarvestClickerPage() {
             description: "Could not load previous progress. Starting fresh.",
             variant: "destructive",
           });
-            resetGameStates(false); // Start fresh without toast
+            resetGameStates(false); 
         }
       } else {
          toast({
             title: "Welcome Farmer!",
             description: "Starting a new game. Good luck!",
           });
-         resetGameStates(false); // Start fresh without toast
+         resetGameStates(false); 
       }
     } catch (error) {
       console.error("Failed to load game:", error);
@@ -563,34 +546,15 @@ export default function HarvestClickerPage() {
         description: "Could not load your progress. Starting fresh.",
         variant: "destructive",
       });
-      resetGameStates(false); // Start fresh without toast
+      resetGameStates(false); 
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toast, isClient]); // resetGameStates is not a dependency here
-
-
-  const resetGameStates = useCallback((showToast: boolean = true) => {
-    setPlots(generateInitialPlots(INITIAL_NUM_PLOTS));
-    setCurrency(INITIAL_CURRENCY);
-    setHarvestedInventory([]);
-    setOwnedSeeds([]);
-    setSelectedSeedFromOwnedId(undefined);
-    setUpgrades(initialUpgradesState);
-    setOwnedNeitts([]);
-    setProducedNits([]);
-    if (showToast) {
-      toast({
-        title: "Game Reset",
-        description: "Started a new farm! Your saved data (if any) is still preserved unless cleared manually.",
-      });
-    }
-  }, [toast]);
+  }, [toast, isClient, resetGameStates]);
 
 
   const clearSaveData = () => {
     if (!isClient) return;
     localStorage.removeItem(SAVE_GAME_KEY);
-    resetGameStates(false); // Reset state without new game toast
+    resetGameStates(false); 
     toast({
       title: "Game Save Data Cleared",
       description: "Your saved game progress has been removed. The game has been reset.",
@@ -606,8 +570,7 @@ export default function HarvestClickerPage() {
     if (isClient) {
       loadGame();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClient]); 
+  }, [isClient, loadGame]); // Added loadGame as a dependency
 
   useEffect(() => {
     if (isClient) {
@@ -621,33 +584,33 @@ export default function HarvestClickerPage() {
     }
   }, [isClient, saveGame]); 
 
+  // This useEffect handles plot adjustments when 'expandFarm' upgrade changes or on initial load.
   useEffect(() => {
     if (isClient) {
         const expectedPlotCount = upgrades.expandFarm ? INITIAL_NUM_PLOTS + PLOT_EXPANSION_AMOUNT : INITIAL_NUM_PLOTS;
         if (plots.length !== expectedPlotCount) {
-            // This logic ensures plots are correctly added or removed based on 'expandFarm' upgrade,
-            // while preserving existing plot data as much as possible.
-            let currentPlots = [...plots];
-            if (plots.length < expectedPlotCount) { // Need to add plots
-                const numToAdd = expectedPlotCount - plots.length;
-                const newPlots = Array.from({ length: numToAdd }, (_, i) => ({
-                    id: `plot-autogen-${plots.length + i + 1}`,
+            let currentPlotsState = [...plots]; // Use a copy from state
+            if (currentPlotsState.length < expectedPlotCount) {
+                const numToAdd = expectedPlotCount - currentPlotsState.length;
+                const newGeneratedPlots = Array.from({ length: numToAdd }, (_, i) => ({ // Renamed variable
+                    id: `plot-autogen-${currentPlotsState.length + i + 1}`, // Use currentPlotsState.length for unique IDs
                     isHarvestable: false,
                 }));
-                currentPlots = [...currentPlots, ...newPlots];
-            } else { // Need to remove plots
-                currentPlots = currentPlots.slice(0, expectedPlotCount);
+                currentPlotsState = [...currentPlotsState, ...newGeneratedPlots];
+            } else { // plots.length > expectedPlotCount
+                currentPlotsState = currentPlotsState.slice(0, expectedPlotCount);
             }
+            
             // Re-ID plots to ensure consistent plot IDs like plot-1, plot-2, etc.
-            const reIdPlots = currentPlots.map((plot, index) => ({
+            // This helps keep plot data associated correctly if plots are removed from the end.
+            const reIdPlots = currentPlotsState.map((plot, index) => ({
                 ...plot,
                 id: `plot-${index + 1}` 
             }));
             setPlots(reIdPlots);
         }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClient, upgrades.expandFarm]); // plots dependency removed from here
+  }, [isClient, upgrades.expandFarm, plots]); // Added `plots` as a dependency
 
   if (!isClient) {
     return (
@@ -702,7 +665,7 @@ export default function HarvestClickerPage() {
             nitsData={NITS_DATA}
             onSellNit={handleSellNit}
             
-            cropsData={CROPS_DATA} // Pass CROPS_DATA for feed crop details
+            cropsData={CROPS_DATA} 
           />
         </div>
         <div className="pt-4 text-center space-y-2 sm:space-y-0 sm:space-x-2">
