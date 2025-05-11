@@ -326,17 +326,18 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                       
                       const NeittIcon = neittDetails.icon;
                       const requiredFeedCrop = cropsData.find(c => c.id === neittDetails.feedCropId);
-                      const playerHasFeedCrop = requiredFeedCrop ? harvestedInventory.some(item => item.cropId === requiredFeedCrop.id && item.quantity > 0) : false; // False if crop required but not found/no details
+                      const playerHasFeedCrop = requiredFeedCrop ? harvestedInventory.some(item => item.cropId === requiredFeedCrop.id && item.quantity > 0) : false; 
                       
                       let productionProgress = 0;
                       let statusText = "Hungry";
-                      const currentNitInCycle = neittDetails.productionCapacity - ownedNeittInstance.nitsLeftToProduce + 1;
-
-                      if (ownedNeittInstance.nitsLeftToProduce > 0) {
+                      
+                      if (ownedNeittInstance.nitsLeftToProduce > 0 && ownedNeittInstance.initialNitsForCycle > 0) {
                         const elapsedTime = Date.now() - ownedNeittInstance.lastProductionCycleStartTime;
                         productionProgress = Math.min(100, (elapsedTime / neittDetails.productionTime) * 100);
-                        statusText = `Producing Nit ${currentNitInCycle}/${neittDetails.productionCapacity}`;
+                        const nitsProducedSoFar = ownedNeittInstance.initialNitsForCycle - ownedNeittInstance.nitsLeftToProduce;
+                        statusText = `Producing Nit ${nitsProducedSoFar + 1}/${ownedNeittInstance.initialNitsForCycle}`;
                       }
+
 
                       let feedButtonText = "Feed";
                       if (requiredFeedCrop && ownedNeittInstance.nitsLeftToProduce <= 0) {
@@ -345,7 +346,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                           feedButtonText = "Producing...";
                       }
 
-                      const feedButtonDisabled = ownedNeittInstance.nitsLeftToProduce > 0 || (!!requiredFeedCrop && !playerHasFeedCrop);
+                      const feedButtonDisabled = ownedNeittInstance.nitsLeftToProduce > 0 || (!!requiredFeedCrop && !playerHasFeedCrop && ownedNeittInstance.nitsLeftToProduce <= 0);
                       
                       let buttonTitle = `Feed ${neittDetails.name}`;
                       if(ownedNeittInstance.nitsLeftToProduce > 0) {
@@ -367,7 +368,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                             <NeittIcon className="w-12 h-12 mb-1" style={{ color: neittDetails.color || 'hsl(var(--primary))' }} />
                           ) : <NeittIconLucide className="w-12 h-12 mb-1 text-muted-foreground" />}
                           <p className="font-semibold text-sm text-center truncate w-full">{neittDetails.name}</p>
-                          <div className="text-xs text-muted-foreground text-center mt-0.5 h-10 flex flex-col justify-center"> {/* Increased height for two lines */}
+                          <div className="text-xs text-muted-foreground text-center mt-0.5 h-10 flex flex-col justify-center">
                             <span>{statusText}</span>
                             {requiredFeedCrop && ownedNeittInstance.nitsLeftToProduce <= 0 && (
                                 <span className="block">Needs: 1 {requiredFeedCrop.name}</span>
@@ -407,6 +408,9 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                     const NeittShopIcon = neitt.icon;
                     const canAfford = currency >= neitt.cost;
                     const feedCropForShop = cropsData.find(c => c.id === neitt.feedCropId);
+                    const productionRange = neitt.minProductionCapacity === neitt.maxProductionCapacity 
+                                            ? `${neitt.minProductionCapacity}` 
+                                            : `${neitt.minProductionCapacity}-${neitt.maxProductionCapacity}`;
                     return (
                       <li key={neitt.id} className={`flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm hover:bg-secondary/50 transition-all ${!canAfford ? 'opacity-60' : ''}`}>
                         <div className="flex items-center space-x-3">
@@ -421,7 +425,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                             <p className="font-semibold">{neitt.name}</p>
                             <p className="text-xs text-muted-foreground max-w-xs truncate">{neitt.description}</p>
                              <p className="text-xs text-muted-foreground">Cost: <Coins className="inline w-3 h-3 mr-0.5" />{neitt.cost}</p>
-                             <p className="text-xs text-muted-foreground">Produces: {nitsData.find(n=>n.id === neitt.producesNitId)?.name || 'Nit'} ({neitt.productionCapacity} per feed / {neitt.productionTime/1000}s each)</p>
+                             <p className="text-xs text-muted-foreground">Produces: {nitsData.find(n=>n.id === neitt.producesNitId)?.name || 'Nit'} ({productionRange} per feed / {neitt.productionTime/1000}s each)</p>
                              {feedCropForShop && <p className="text-xs text-muted-foreground">Eats: {feedCropForShop.name}</p>}
                           </div>
                         </div>
@@ -450,3 +454,4 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
 };
 
 export default InventoryAndShop;
+

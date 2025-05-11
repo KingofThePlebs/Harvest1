@@ -68,7 +68,8 @@ export interface NeittType {
   dataAiHint?: string;
   producesNitId: string; // ID of the Nit this Neitt produces
   productionTime: number; // Time in milliseconds to produce one Nit
-  productionCapacity: number; // How many Nits it produces per feeding cycle (e.g., 5)
+  minProductionCapacity: number; // Minimum Nits it produces per feeding cycle
+  maxProductionCapacity: number; // Maximum Nits it produces per feeding cycle
   feedCropId: string; // ID of the crop this Neitt eats
 }
 
@@ -77,6 +78,7 @@ export interface OwnedNeitt { // Represents an individual Neitt instance
   neittTypeId: string;
   lastProductionCycleStartTime: number; // Timestamp when the current *Nit's* production cycle started
   nitsLeftToProduce: number; // How many nits this Neitt will produce before needing to be fed again. 0 means hungry.
+  initialNitsForCycle: number; // Total nits determined for the current feeding cycle
 }
 
 export interface Nit {
@@ -92,3 +94,4 @@ export interface OwnedNit {
   nitId: string;
   quantity: number;
 }
+

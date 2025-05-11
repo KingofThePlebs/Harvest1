@@ -313,6 +313,7 @@ export default function HarvestClickerPage() {
         neittTypeId: neittId,
         lastProductionCycleStartTime: 0, // Will be set on first feed
         nitsLeftToProduce: 0, // Starts hungry
+        initialNitsForCycle: 0, // Starts with 0 nits for the cycle
       };
       return [...prevOwnedNeitts, newNeittInstance];
     });
@@ -321,68 +322,68 @@ export default function HarvestClickerPage() {
 
 
   const handleFeedNeitt = useCallback((instanceId: string) => {
-    const neittInstance = ownedNeitts.find(n => n.instanceId === instanceId);
-    if (!neittInstance) {
-        toast({ title: "Neitt not found!", variant: "destructive" });
-        return;
-    }
+    setOwnedNeitts(prevOwnedNeitts => {
+        const neittInstanceIndex = prevOwnedNeitts.findIndex(n => n.instanceId === instanceId);
+        if (neittInstanceIndex === -1) {
+            toast({ title: "Neitt not found!", variant: "destructive" });
+            return prevOwnedNeitts;
+        }
+        const neittInstance = prevOwnedNeitts[neittInstanceIndex];
+        const neittType = NEITTS_DATA.find(nt => nt.id === neittInstance.neittTypeId);
 
-    const neittType = NEITTS_DATA.find(nt => nt.id === neittInstance.neittTypeId);
-    if (!neittType) {
-        toast({ title: "Neitt type error!", variant: "destructive" });
-        return;
-    }
+        if (!neittType) {
+            toast({ title: "Neitt type error!", variant: "destructive" });
+            return prevOwnedNeitts;
+        }
 
-    if (neittInstance.nitsLeftToProduce > 0) {
-        toast({ title: `${neittType.name} is already producing!`, description: "It's busy producing Nits." });
-        return;
-    }
-    
-    const requiredCrop = CROPS_DATA.find(c => c.id === neittType.feedCropId);
-    if (!requiredCrop) {
-        toast({ title: "Feeding Error", description: `Required feed crop (${neittType.feedCropId}) for ${neittType.name} not found.`, variant: "destructive" });
-        return;
-    }
+        if (neittInstance.nitsLeftToProduce > 0) {
+            toast({ title: `${neittType.name} is already producing!`, description: "It's busy producing Nits." });
+            return prevOwnedNeitts;
+        }
+        
+        const requiredCrop = CROPS_DATA.find(c => c.id === neittType.feedCropId);
+        if (!requiredCrop) {
+            toast({ title: "Feeding Error", description: `Required feed crop (${neittType.feedCropId}) for ${neittType.name} not found.`, variant: "destructive" });
+            return prevOwnedNeitts;
+        }
 
-    const cropInInventoryIndex = harvestedInventory.findIndex(item => item.cropId === neittType.feedCropId);
-    const cropInInventoryItem = cropInInventoryIndex > -1 ? harvestedInventory[cropInInventoryIndex] : undefined;
+        let canFeed = false;
+        let updatedHarvestedInventory = [...harvestedInventory];
 
-    if (!cropInInventoryItem || cropInInventoryItem.quantity < 1) {
-      toast({ 
-          title: `Not Enough ${requiredCrop.name}s!`, 
-          description: `You need 1 ${requiredCrop.name} to feed ${neittType.name}.`, 
-          variant: "destructive" 
-      });
-      return;
-    }
+        const cropInInventoryIndex = updatedHarvestedInventory.findIndex(item => item.cropId === neittType.feedCropId);
+        if (cropInInventoryIndex > -1 && updatedHarvestedInventory[cropInInventoryIndex].quantity >= 1) {
+            updatedHarvestedInventory[cropInInventoryIndex] = {
+                ...updatedHarvestedInventory[cropInInventoryIndex],
+                quantity: updatedHarvestedInventory[cropInInventoryIndex].quantity - 1,
+            };
+            updatedHarvestedInventory = updatedHarvestedInventory.filter(item => item.quantity > 0);
+            setHarvestedInventory(updatedHarvestedInventory);
+            canFeed = true;
+        }
 
-    // Consume the crop
-    setHarvestedInventory(prevInventory =>
-      prevInventory
-        .map(item =>
-          item.cropId === requiredCrop.id
-            ? { ...item, quantity: item.quantity - 1 }
-            : item
-        )
-        .filter(item => item.quantity > 0)
-    );
+        if (!canFeed) {
+          toast({ 
+              title: `Not Enough ${requiredCrop.name}s!`, 
+              description: `You need 1 ${requiredCrop.name} to feed ${neittType.name}.`, 
+              variant: "destructive" 
+          });
+          return prevOwnedNeitts;
+        }
+        
+        const nitsToProduceThisCycle = Math.floor(Math.random() * (neittType.maxProductionCapacity - neittType.minProductionCapacity + 1)) + neittType.minProductionCapacity;
 
-    // Update Neitt state
-    setOwnedNeitts(prevOwnedNeitts => 
-      prevOwnedNeitts.map(n => 
-        n.instanceId === instanceId 
-          ? {
-              ...n,
-              nitsLeftToProduce: neittType.productionCapacity,
-              lastProductionCycleStartTime: Date.now(),
-            }
-          : n
-      )
-    );
-
-    // Call toast *after* state updates have been scheduled
-    toast({ title: `Fed ${neittType.name}!`, description: `Used 1 ${requiredCrop.name}. It will now produce ${neittType.productionCapacity} Nits.` });
-  }, [ownedNeitts, harvestedInventory, toast]);
+        const updatedNeitts = [...prevOwnedNeitts];
+        updatedNeitts[neittInstanceIndex] = {
+            ...neittInstance,
+            nitsLeftToProduce: nitsToProduceThisCycle,
+            initialNitsForCycle: nitsToProduceThisCycle,
+            lastProductionCycleStartTime: Date.now(),
+        };
+        
+        toast({ title: `Fed ${neittType.name}!`, description: `Used 1 ${requiredCrop.name}. It will now produce ${nitsToProduceThisCycle} Nit(s).` });
+        return updatedNeitts;
+    });
+  }, [harvestedInventory, toast]);
 
 
   const handleSellNit = useCallback((nitIdToSell: string, quantity: number) => {
@@ -512,11 +513,17 @@ export default function HarvestClickerPage() {
                                         ? neittFromFile.nitsLeftToProduce
                                         : 0; 
               
+              const initialNitsForCycle = typeof neittFromFile.initialNitsForCycle === 'number' 
+                                        ? neittFromFile.initialNitsForCycle 
+                                        : (nitsLeftToProduce > 0 ? nitsLeftToProduce : 0);
+
+
               processedNeitts.push({
                 instanceId: instanceId,
                 neittTypeId: neittTypeId,
                 lastProductionCycleStartTime: lastProductionCycleStartTime,
                 nitsLeftToProduce: nitsLeftToProduce,
+                initialNitsForCycle: initialNitsForCycle,
               });
             });
           }
@@ -690,7 +697,7 @@ export default function HarvestClickerPage() {
         </div>
       </main>
       <footer className="text-center p-4 text-sm text-muted-foreground">
-        Harvest Clicker - Made with Firebase Studio
+        Harvest Clicker - Made by AloneNeitt
       </footer>
     </div>
   );
