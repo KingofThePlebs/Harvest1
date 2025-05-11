@@ -2,9 +2,10 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import type { PlotState, InventoryItem, Crop, UpgradesState, UpgradeId, LeaderboardEntry } from '@/types';
+import type { PlotState, InventoryItem, Crop, UpgradesState, UpgradeId, OwnedSlime } from '@/types';
 import { CROPS_DATA } from '@/config/crops';
 import { UPGRADES_DATA } from '@/config/upgrades';
+import { SLIMES_DATA } from '@/config/slimes'; // Import slime data
 import GameHeader from '@/components/game/GameHeader';
 import PlantingArea from '@/components/game/PlantingArea';
 import SeedShopPanel from '@/components/game/SeedShopPanel';
@@ -12,14 +13,13 @@ import InventoryAndShop from '@/components/game/InventoryAndShop';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
 import { RefreshCcw, Save, Trash2, Loader2 } from 'lucide-react';
-import { submitPlayerScore, getLeaderboard } from '@/actions/leaderboardActions';
+// Leaderboard actions are removed
 
 const INITIAL_CURRENCY = 20;
 const INITIAL_NUM_PLOTS = 6;
 const PLOT_EXPANSION_AMOUNT = 3;
 const SAVE_GAME_KEY = 'harvestClickerSaveData';
-const PLAYER_ID_KEY = 'harvestClickerPlayerId';
-const PLAYER_NAME_KEY = 'harvestClickerPlayerName';
+// Player ID and Name keys for leaderboard are removed as leaderboard is removed.
 
 
 const generateInitialPlots = (count: number): PlotState[] => {
@@ -46,114 +46,31 @@ export default function HarvestClickerPage() {
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
 
-  const [localPlayerId, setLocalPlayerId] = useState<string | null>(null);
-  const [playerName, setPlayerName] = useState<string>(""); // Name confirmed with server
-  const [playerNameInput, setPlayerNameInput] = useState<string>(""); // For the input field
-  
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [isLeaderboardLoading, setIsLeaderboardLoading] = useState<boolean>(false);
-  const [isSubmittingScore, setIsSubmittingScore] = useState<boolean>(false);
-  const isSubmittingScoreRef = useRef(isSubmittingScore);
+  // Slime state
+  const [ownedSlimes, setOwnedSlimes] = useState<OwnedSlime[]>([]);
 
-  useEffect(() => {
-    isSubmittingScoreRef.current = isSubmittingScore;
-  }, [isSubmittingScore]);
+  // Leaderboard state and refs removed
+  // const [localPlayerId, setLocalPlayerId] = useState<string | null>(null);
+  // const [playerName, setPlayerName] = useState<string>(""); 
+  // const [playerNameInput, setPlayerNameInput] = useState<string>("");
+  // const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  // const [isLeaderboardLoading, setIsLeaderboardLoading] = useState<boolean>(false);
+  // const [isSubmittingScore, setIsSubmittingScore] = useState<boolean>(false);
+  // const isSubmittingScoreRef = useRef(isSubmittingScore);
+
+  // useEffect(() => {
+  //   isSubmittingScoreRef.current = isSubmittingScore;
+  // }, [isSubmittingScore]);
 
 
-  // Initialize localPlayerId and load player name from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setIsClient(true);
-      let pid = localStorage.getItem(PLAYER_ID_KEY);
-      if (!pid) {
-        pid = crypto.randomUUID();
-        localStorage.setItem(PLAYER_ID_KEY, pid);
-      }
-      setLocalPlayerId(pid);
-
-      const savedPlayerName = localStorage.getItem(PLAYER_NAME_KEY);
-      if (savedPlayerName) {
-        setPlayerName(savedPlayerName);
-        setPlayerNameInput(savedPlayerName);
-      }
+      // Logic for player ID and name from localStorage removed
     }
   }, []);
 
-  const fetchLeaderboardData = useCallback(async () => {
-    if (!isClient) return;
-    setIsLeaderboardLoading(true);
-    try {
-      const data = await getLeaderboard();
-      setLeaderboard(data);
-    } catch (error) {
-      console.error("Failed to fetch leaderboard", error);
-      toast({ title: "Error", description: "Could not fetch leaderboard.", variant: "destructive" });
-    } finally {
-      setIsLeaderboardLoading(false);
-    }
-  }, [isClient, toast]);
-
-  useEffect(() => {
-    fetchLeaderboardData();
-  }, [fetchLeaderboardData]);
-  
-  const handlePlayerNameInputChange = (name: string) => {
-    setPlayerNameInput(name);
-  };
-
-  const handleSubmitNameToLeaderboard = async () => {
-    if (!localPlayerId || !playerNameInput.trim()) {
-      toast({ title: "Invalid Name", description: "Please enter a valid player name.", variant: "destructive"});
-      return;
-    }
-    if (isSubmittingScoreRef.current) return;
-
-    setIsSubmittingScore(true);
-    const result = await submitPlayerScore(localPlayerId, playerNameInput.trim(), currency);
-    setIsSubmittingScore(false);
-
-    if (result.success && result.finalPlayerName && result.finalPlayerId) {
-      setPlayerName(result.finalPlayerName); 
-      localStorage.setItem(PLAYER_NAME_KEY, result.finalPlayerName);
-      if (localPlayerId !== result.finalPlayerId) {
-         setLocalPlayerId(result.finalPlayerId);
-         localStorage.setItem(PLAYER_ID_KEY, result.finalPlayerId);
-      }
-      toast({ title: "Success", description: `Your name "${result.finalPlayerName}" and score have been submitted!` });
-      fetchLeaderboardData(); 
-    } else {
-      toast({ title: "Error", description: result.message || "Failed to submit name.", variant: "destructive" });
-    }
-  };
-  
-  // Auto-submit score when currency changes significantly or playerName is set
-  useEffect(() => {
-    if (isClient && localPlayerId && playerName.trim() && currency > 0) { 
-      const timer = setTimeout(async () => {
-        if (isSubmittingScoreRef.current) return; 
-        
-        setIsSubmittingScore(true);
-        const result = await submitPlayerScore(localPlayerId, playerName, currency);
-        setIsSubmittingScore(false);
-
-        if (result.success) {
-          fetchLeaderboardData();
-        } else {
-          // console.warn("Auto score submission failed:", result.message);
-        }
-      }, 2000); 
-      return () => clearTimeout(timer);
-    }
-  }, [currency, playerName, localPlayerId, isClient, fetchLeaderboardData]);
-
-
-  const processedLeaderboardData = useMemo(() => {
-    return leaderboard.map(entry => ({
-      ...entry,
-      isCurrentUser: entry.playerId === localPlayerId,
-    })).sort((a, b) => b.score - a.score);
-  }, [leaderboard, localPlayerId]);
-
+  // Leaderboard related useEffects and functions (fetchLeaderboardData, handlePlayerNameInputChange, handleSubmitNameToLeaderboard, auto-submit score, processedLeaderboardData) are removed.
 
   const getEffectiveCropSeedPrice = useCallback((basePrice: number) => {
     return upgrades.bulkDiscount ? Math.ceil(basePrice * 0.9) : basePrice;
@@ -340,6 +257,30 @@ export default function HarvestClickerPage() {
 
   }, [currency, upgrades, toast, plots]);
 
+  const handleBuySlime = useCallback((slimeId: string) => {
+    const slimeToBuy = SLIMES_DATA.find(s => s.id === slimeId);
+    if (!slimeToBuy) {
+      toast({ title: "Slime not found!", variant: "destructive" });
+      return;
+    }
+    if (currency < slimeToBuy.cost) {
+      toast({ title: "Not Enough Gold!", description: `You need ${slimeToBuy.cost} gold for a ${slimeToBuy.name}.`, variant: "destructive" });
+      return;
+    }
+
+    setCurrency(prev => prev - slimeToBuy.cost);
+    setOwnedSlimes(prevOwnedSlimes => {
+      const existingSlimeIndex = prevOwnedSlimes.findIndex(item => item.slimeTypeId === slimeId);
+      if (existingSlimeIndex > -1) {
+        const updatedSlimes = [...prevOwnedSlimes];
+        updatedSlimes[existingSlimeIndex].quantity += 1;
+        return updatedSlimes;
+      }
+      return [...prevOwnedSlimes, { slimeTypeId: slimeId, quantity: 1 }];
+    });
+    toast({ title: `${slimeToBuy.name} Purchased!`, description: `A new ${slimeToBuy.name} has joined your farm!` });
+  }, [currency, toast]);
+
   const saveGame = useCallback(() => {
     if (!isClient) return;
     try {
@@ -349,7 +290,8 @@ export default function HarvestClickerPage() {
         harvestedInventory,
         ownedSeeds,
         upgrades,
-        playerName, 
+        ownedSlimes, // Save owned slimes
+        // playerName removed
       };
       localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
       toast({
@@ -364,7 +306,7 @@ export default function HarvestClickerPage() {
         variant: "destructive",
       });
     }
-  }, [plots, currency, harvestedInventory, ownedSeeds, upgrades, playerName, toast, isClient]);
+  }, [plots, currency, harvestedInventory, ownedSeeds, upgrades, ownedSlimes, toast, isClient]); // playerName removed
 
   const loadGame = useCallback(() => {
     if (!isClient) return;
@@ -410,10 +352,8 @@ export default function HarvestClickerPage() {
           setHarvestedInventory(gameState.harvestedInventory || []);
           setOwnedSeeds(gameState.ownedSeeds || []);
           setUpgrades(finalUpgrades);
-          if (gameState.playerName) {
-            setPlayerName(gameState.playerName);
-            setPlayerNameInput(gameState.playerName); 
-          }
+          setOwnedSlimes(gameState.ownedSlimes || []); // Load owned slimes
+          // Player name loading removed
           setSelectedSeedFromOwnedId(undefined); 
 
           toast({
@@ -431,6 +371,7 @@ export default function HarvestClickerPage() {
             setHarvestedInventory([]);
             setOwnedSeeds([]);
             setUpgrades(initialUpgradesState);
+            setOwnedSlimes([]);
             setSelectedSeedFromOwnedId(undefined);
         }
       } else {
@@ -439,7 +380,7 @@ export default function HarvestClickerPage() {
             description: "Starting a new game. Good luck!",
           });
       }
-      fetchLeaderboardData(); 
+      // fetchLeaderboardData removed
     } catch (error) {
       console.error("Failed to load game:", error);
       toast({
@@ -452,18 +393,19 @@ export default function HarvestClickerPage() {
       setHarvestedInventory([]);
       setOwnedSeeds([]);
       setUpgrades(initialUpgradesState);
+      setOwnedSlimes([]);
       setSelectedSeedFromOwnedId(undefined);
-      fetchLeaderboardData();
+      // fetchLeaderboardData removed
     }
-  }, [toast, isClient, fetchLeaderboardData]);
+  }, [toast, isClient]); // fetchLeaderboardData removed
 
   const clearSaveData = () => {
     if (!isClient) return;
     localStorage.removeItem(SAVE_GAME_KEY);
-    localStorage.removeItem(PLAYER_NAME_KEY); 
+    // localStorage.removeItem(PLAYER_NAME_KEY); // Removed
     toast({
       title: "Game Save Data Cleared",
-      description: "Your saved game progress and name have been removed. Reset the game or refresh to start fresh with your farmer ID.",
+      description: "Your saved game progress has been removed. Reset the game or refresh to start fresh.",
     });
     setPlots(generateInitialPlots(INITIAL_NUM_PLOTS));
     setCurrency(INITIAL_CURRENCY);
@@ -471,9 +413,9 @@ export default function HarvestClickerPage() {
     setOwnedSeeds([]);
     setSelectedSeedFromOwnedId(undefined);
     setUpgrades(initialUpgradesState);
-    setPlayerName(""); 
-    setPlayerNameInput("");
-    fetchLeaderboardData(); 
+    setOwnedSlimes([]);
+    // Player name reset removed
+    // fetchLeaderboardData removed
   };
   
   const resetGame = () => {
@@ -483,13 +425,12 @@ export default function HarvestClickerPage() {
     setOwnedSeeds([]);
     setSelectedSeedFromOwnedId(undefined);
     setUpgrades(initialUpgradesState);
+    setOwnedSlimes([]);
     toast({
       title: "Game Reset",
       description: "Started a new farm! Your saved data (if any) is still preserved unless cleared manually.",
     });
-    if (localPlayerId && playerName.trim()) {
-        submitPlayerScore(localPlayerId, playerName, INITIAL_CURRENCY).then(() => fetchLeaderboardData());
-    }
+    // Leaderboard score submission on reset removed
   };
   
   useEffect(() => {
@@ -503,16 +444,14 @@ export default function HarvestClickerPage() {
     if (isClient) {
       const handleBeforeUnload = () => {
         saveGame();
-        if (localPlayerId && playerName.trim()) {
-            submitPlayerScore(localPlayerId, playerName, currency);
-        }
+        // Score submission on unload removed
       };
       window.addEventListener('beforeunload', handleBeforeUnload);
       return () => {
         window.removeEventListener('beforeunload', handleBeforeUnload);
       };
     }
-  }, [isClient, saveGame, localPlayerId, playerName, currency]); 
+  }, [isClient, saveGame, currency]); // Removed leaderboard related dependencies
 
   useEffect(() => {
     if (isClient) {
@@ -540,7 +479,7 @@ export default function HarvestClickerPage() {
         }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClient, upgrades.expandFarm]); // Removed plots.length as it was causing re-runs when plots were re-IDed. Logic should now stabilize based on upgrade state.
+  }, [isClient, upgrades.expandFarm]);
 
 
   if (!isClient) {
@@ -587,13 +526,19 @@ export default function HarvestClickerPage() {
             onBuyUpgrade={handleBuyUpgrade}
             getEffectiveCropSellPrice={getEffectiveCropSellPrice}
             
-            playerNameInput={playerNameInput}
-            onPlayerNameInputChange={handlePlayerNameInputChange}
-            onSubmitNameToLeaderboard={handleSubmitNameToLeaderboard}
-            leaderboardData={processedLeaderboardData}
-            isLeaderboardLoading={isLeaderboardLoading}
-            isSubmittingScore={isSubmittingScore}
-            confirmedPlayerName={playerName}
+            // Leaderboard props removed
+            // playerNameInput={playerNameInput}
+            // onPlayerNameInputChange={handlePlayerNameInputChange}
+            // onSubmitNameToLeaderboard={handleSubmitNameToLeaderboard}
+            // leaderboardData={processedLeaderboardData}
+            // isLeaderboardLoading={isLeaderboardLoading}
+            // isSubmittingScore={isSubmittingScore}
+            // confirmedPlayerName={playerName}
+
+            // Slime Farm props
+            slimesData={SLIMES_DATA}
+            ownedSlimes={ownedSlimes}
+            onBuySlime={handleBuySlime}
           />
         </div>
         <div className="pt-4 text-center space-y-2 sm:space-y-0 sm:space-x-2">
@@ -614,4 +559,3 @@ export default function HarvestClickerPage() {
     </div>
   );
 }
-

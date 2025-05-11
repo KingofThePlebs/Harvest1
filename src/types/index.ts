@@ -57,11 +57,18 @@ export interface UpgradeDefinition {
   icon: LucideIcon;
 }
 
-export interface LeaderboardEntry {
-  id: string; // Document ID from Firestore (typically playerId)
+export interface SlimeType {
+  id: string;
   name: string;
-  score: number;
-  playerId: string; // Explicitly store playerId
-  isCurrentUser?: boolean; // Determined on the client
+  description: string;
+  cost: number;
+  icon: LucideIcon;
+  color?: string; // Optional: for styling the icon or UI elements
+  imageUrl?: string; // Placeholder for now, will become StaticImageData
+  dataAiHint?: string;
 }
 
+export interface OwnedSlime {
+  slimeTypeId: string;
+  quantity: number;
+}

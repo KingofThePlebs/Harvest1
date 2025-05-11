@@ -1,15 +1,17 @@
 
 import type { FC } from 'react';
 import Image from 'next/image';
-import type { InventoryItem, Crop, UpgradeDefinition, UpgradesState, UpgradeId, LeaderboardEntry } from '@/types';
+import type { InventoryItem, Crop, UpgradeDefinition, UpgradesState, UpgradeId, SlimeType, OwnedSlime } from '@/types';
 import { CROPS_DATA } from '@/config/crops';
+import { SLIMES_DATA } from '@/config/slimes'; // Import slime data
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Trophy, Loader2, Send } from 'lucide-react';
+// import { Input } from '@/components/ui/input'; // Removed as leaderboard name input is gone
+// import { Label } from '@/components/ui/label'; // Removed
+import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, /* Trophy, Loader2, Send */ Smile as SlimeIconLucide } from 'lucide-react'; // Removed leaderboard icons
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 
 
 interface InventoryAndShopProps {
@@ -24,13 +26,19 @@ interface InventoryAndShopProps {
   onBuyUpgrade: (upgradeId: UpgradeId) => void;
   getEffectiveCropSellPrice: (basePrice: number) => number;
   
-  playerNameInput: string;
-  onPlayerNameInputChange: (name: string) => void;
-  onSubmitNameToLeaderboard: () => Promise<void>;
-  leaderboardData: LeaderboardEntry[];
-  isLeaderboardLoading: boolean;
-  isSubmittingScore: boolean;
-  confirmedPlayerName: string;
+  // Leaderboard props removed
+  // playerNameInput: string;
+  // onPlayerNameInputChange: (name: string) => void;
+  // onSubmitNameToLeaderboard: () => Promise<void>;
+  // leaderboardData: LeaderboardEntry[];
+  // isLeaderboardLoading: boolean;
+  // isSubmittingScore: boolean;
+  // confirmedPlayerName: string;
+
+  // Slime Farm props
+  slimesData: SlimeType[];
+  ownedSlimes: OwnedSlime[];
+  onBuySlime: (slimeId: string) => void;
 }
 
 const InventoryAndShop: FC<InventoryAndShopProps> = ({ 
@@ -44,13 +52,10 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   purchasedUpgrades, 
   onBuyUpgrade,
   getEffectiveCropSellPrice,
-  playerNameInput,
-  onPlayerNameInputChange,
-  onSubmitNameToLeaderboard,
-  leaderboardData,
-  isLeaderboardLoading,
-  isSubmittingScore,
-  confirmedPlayerName,
+  // Leaderboard props removed
+  slimesData,
+  ownedSlimes,
+  onBuySlime,
 }) => {
   const getCropById = (cropId: string): Crop | undefined => CROPS_DATA.find(c => c.id === cropId);
 
@@ -58,12 +63,13 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
     <Card className="shadow-lg">
       <Tabs defaultValue="mySeeds" className="w-full">
         <CardHeader className="pb-0">
+          {/* Adjusted grid-cols for 5 tabs */}
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="mySeeds" className="flex items-center gap-2"><Sprout className="w-4 h-4" />My Seeds</TabsTrigger>
             <TabsTrigger value="sellMarket" className="flex items-center gap-2"><Handshake className="w-4 h-4" />Sell Market</TabsTrigger>
             <TabsTrigger value="upgrades" className="flex items-center gap-2"><TrendingUp className="w-4 h-4" />Upgrades</TabsTrigger>
             <TabsTrigger value="town" className="flex items-center gap-2"><Building className="w-4 h-4" />Town</TabsTrigger>
-            <TabsTrigger value="leaderboard" className="flex items-center gap-2"><Trophy className="w-4 h-4" />Leaderboard</TabsTrigger>
+            <TabsTrigger value="slimeFarm" className="flex items-center gap-2"><SlimeIconLucide className="w-4 h-4" />Slime Farm</TabsTrigger>
           </TabsList>
         </CardHeader>
         
@@ -87,7 +93,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                                       ${isSelected ? 'ring-2 ring-primary-foreground ring-offset-2 ring-offset-background' : 'hover:bg-secondary/50'}`}
                       >
                         <div className="flex items-center space-x-3">
-                          {crop.seedShopImageUrl && typeof crop.seedShopImageUrl === 'object' ? ( // Check if StaticImageData
+                          {crop.seedShopImageUrl && typeof crop.seedShopImageUrl === 'object' ? ( 
                             <Image 
                               src={crop.seedShopImageUrl} 
                               alt={crop.name} 
@@ -255,71 +261,80 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
           </ScrollArea>
         </TabsContent>
 
-        <TabsContent value="leaderboard">
+        <TabsContent value="slimeFarm">
           <ScrollArea className="h-[300px] sm:h-[400px] lg:max-h-[60vh]">
-            <CardContent className="space-y-4 pt-4">
-              <CardTitle className="text-xl text-primary-foreground/80">Online Leaderboard</CardTitle>
-              <CardDescription>
-                {confirmedPlayerName ? `Welcome, ${confirmedPlayerName}! ` : ""}
-                See how you rank against other farmers. Your name and score are submitted automatically.
-              </CardDescription>
-              
-              <div className="space-y-2">
-                <Label htmlFor="playerNameInput" className="text-sm font-medium">Your Farmer Name</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="playerNameInput"
-                    type="text"
-                    value={playerNameInput}
-                    onChange={(e) => onPlayerNameInputChange(e.target.value)}
-                    placeholder="Enter your farmer name"
-                    className="max-w-sm"
-                    disabled={isSubmittingScore}
-                  />
-                  <Button onClick={onSubmitNameToLeaderboard} disabled={isSubmittingScore || !playerNameInput.trim() || playerNameInput.trim() === confirmedPlayerName}>
-                    {isSubmittingScore ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                    {confirmedPlayerName === playerNameInput.trim() ? "Name Set" : "Set Name"}
-                  </Button>
-                </div>
-                {confirmedPlayerName && playerNameInput !== confirmedPlayerName && (
-                    <p className="text-xs text-muted-foreground">
-                        Current name: {confirmedPlayerName}. Type a new name and click "Set Name" to change.
-                    </p>
+            <CardContent className="space-y-6 pt-4">
+              {/* Slime Display Area */}
+              <div>
+                <CardTitle className="text-xl text-primary-foreground/80 mb-2">Your Slime Pen</CardTitle>
+                <CardDescription className="mb-4">These are the slimes you own. Watch them jiggle!</CardDescription>
+                {ownedSlimes.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">Your slime pen is empty. Buy some slimes from the shop below!</p>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 p-2 bg-background/50 rounded-md">
+                    {ownedSlimes.map(ownedSlime => {
+                      const slimeDetails = slimesData.find(s => s.id === ownedSlime.slimeTypeId);
+                      if (!slimeDetails) return null;
+                      const SlimeIcon = slimeDetails.icon;
+                      return (
+                        <Card key={slimeDetails.id} className="flex flex-col items-center p-3 bg-secondary/40 shadow-sm rounded-lg hover:shadow-md transition-shadow">
+                          {slimeDetails.imageUrl ? (
+                             <Image src={slimeDetails.imageUrl} alt={slimeDetails.name} width={48} height={48} className="rounded-full mb-2 object-cover ring-2 ring-primary/50" data-ai-hint={slimeDetails.dataAiHint} />
+                          ) : SlimeIcon ? (
+                            <SlimeIcon className="w-12 h-12 mb-2" style={{ color: slimeDetails.color || 'hsl(var(--primary))' }} />
+                          ) : <SlimeIconLucide className="w-12 h-12 mb-2 text-muted-foreground" />}
+                          <p className="font-semibold text-sm text-center truncate w-full">{slimeDetails.name}</p>
+                          <p className="text-xs text-muted-foreground">Qty: {ownedSlime.quantity}</p>
+                        </Card>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
 
-              {isLeaderboardLoading ? (
-                <div className="flex justify-center items-center h-32">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <Separator className="my-6 border-border/50" />
+
+              {/* Slime Shop Area */}
+              <div>
+                <CardTitle className="text-xl text-primary-foreground/80 mb-2">Slime Shop</CardTitle>
+                <CardDescription className="mb-4">Purchase new slimes to add to your farm.</CardDescription>
+                <div className="flex items-center space-x-2 text-lg font-semibold mb-4">
+                    <Coins className="h-5 w-5 text-primary" />
+                    <span>Your Gold: {currency}</span>
                 </div>
-              ) : leaderboardData.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">
-                  The leaderboard is empty, or no name is set. Be the first to set your name and score!
-                </p>
-              ) : (
-                <ul className="space-y-2 pt-2">
-                  {leaderboardData.map((entry, index) => (
-                    <li 
-                      key={entry.id} 
-                      className={`flex items-center justify-between p-3 rounded-md shadow-sm 
-                                  ${entry.isCurrentUser ? 'bg-primary/30 ring-2 ring-primary' : 'bg-secondary/30 hover:bg-secondary/40'}`}
-                    >
-                      <div className="flex items-center space-x-2">
-                        <span className={`font-semibold w-6 text-center ${entry.isCurrentUser ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
-                          {index + 1}.
-                        </span>
-                        <span className={`font-medium truncate max-w-[150px] sm:max-w-[200px] ${entry.isCurrentUser ? 'text-primary-foreground font-bold' : ''}`}>
-                          {entry.name} {entry.isCurrentUser ? <span className="text-xs">(You)</span> : ''}
-                        </span>
-                      </div>
-                      <div className="flex items-center font-semibold">
-                        <Coins className="w-4 h-4 mr-1 text-yellow-500" />
-                        {entry.score}
-                      </div>
-                    </li>
-                  ))}
+                <ul className="space-y-3">
+                  {slimesData.map(slime => {
+                    const SlimeShopIcon = slime.icon;
+                    const canAfford = currency >= slime.cost;
+                    return (
+                      <li key={slime.id} className={`flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm hover:bg-secondary/50 transition-all ${!canAfford ? 'opacity-60' : ''}`}>
+                        <div className="flex items-center space-x-3">
+                           {slime.imageUrl ? (
+                             <Image src={slime.imageUrl} alt={slime.name} width={40} height={40} className="rounded-md object-cover" data-ai-hint={slime.dataAiHint}/>
+                          ) : SlimeShopIcon ? (
+                            <SlimeShopIcon className="w-10 h-10" style={{ color: slime.color || 'hsl(var(--primary))' }}/>
+                          ) : <SlimeIconLucide className="w-10 h-10 text-muted-foreground" /> }
+                          <div className="flex-grow">
+                            <p className="font-semibold">{slime.name}</p>
+                            <p className="text-xs text-muted-foreground max-w-xs truncate">{slime.description}</p>
+                             <p className="text-xs text-muted-foreground">Cost: <Coins className="inline w-3 h-3 mr-0.5" />{slime.cost}</p>
+                          </div>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          onClick={() => onBuySlime(slime.id)} 
+                          disabled={!canAfford}
+                          className="text-xs h-8 min-w-[70px]"
+                          title={!canAfford ? `Need ${slime.cost} gold` : `Buy for ${slime.cost} gold`}
+                          variant="outline"
+                        >
+                          Buy
+                        </Button>
+                      </li>
+                    );
+                  })}
                 </ul>
-              )}
+              </div>
             </CardContent>
           </ScrollArea>
         </TabsContent>
