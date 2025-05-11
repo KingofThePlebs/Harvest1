@@ -57,13 +57,13 @@ import tomatoPlot4Img from '@/images/crops/tomato/plot_stage_4.png';
 import tomatoPlot5Img from '@/images/crops/tomato/plot_stage_5.png';
 
 // --- Broccoli Images ---
-import broccoliSeedImg from '@/images/crops/broccoli/seed.png';
-import broccoliHarvestedImg from '@/images/crops/broccoli/harvested.png';
-import broccoliPlot1Img from '@/images/crops/broccoli/plot_stage_1.png';
-import broccoliPlot2Img from '@/images/crops/broccoli/plot_stage_2.png';
-import broccoliPlot3Img from '@/images/crops/broccoli/plot_stage_3.png';
-import broccoliPlot4Img from '@/images/crops/broccoli/plot_stage_4.png';
-import broccoliPlot5Img from '@/images/crops/broccoli/plot_stage_5.png';
+// import broccoliSeedImg from '@/images/crops/broccoli/seed.png'; // Removed due to Module Not Found
+// import broccoliHarvestedImg from '@/images/crops/broccoli/harvested.png'; // Removed due to Module Not Found
+// import broccoliPlot1Img from '@/images/crops/broccoli/plot_stage_1.png'; // Removed due to Module Not Found
+// import broccoliPlot2Img from '@/images/crops/broccoli/plot_stage_2.png'; // Removed due to Module Not Found
+// import broccoliPlot3Img from '@/images/crops/broccoli/plot_stage_3.png'; // Removed due to Module Not Found
+// import broccoliPlot4Img from '@/images/crops/broccoli/plot_stage_4.png'; // Removed due to Module Not Found
+// import broccoliPlot5Img from '@/images/crops/broccoli/plot_stage_5.png'; // Removed due to Module Not Found
 
 // --- Cucumber Images ---
 import cucumberSeedImg from '@/images/crops/cucumber/seed.png';
@@ -112,12 +112,12 @@ import cornPlot5Img from '@/images/crops/corn/plot_stage_5.png';
 
 // --- Cabbage Images ---
 import cabbageSeedImg from '@/images/crops/cabbage/seed.png';
-import cabbageHarvestedImg from '@/images/crops/cabbage/harvested.png';
-import cabbagePlot1Img from '@/images/crops/cabbage/plot_stage_1.png';
-import cabbagePlot2Img from '@/images/crops/cabbage/plot_stage_2.png';
-import cabbagePlot3Img from '@/images/crops/cabbage/plot_stage_3.png';
-import cabbagePlot4Img from '@/images/crops/cabbage/plot_stage_4.png';
-import cabbagePlot5Img from '@/images/crops/cabbage/plot_stage_5.png';
+// import cabbageHarvestedImg from '@/images/crops/cabbage/harvested.png'; // Removed due to Module Not Found
+// import cabbagePlot1Img from '@/images/crops/cabbage/plot_stage_1.png'; // Removed due to Module Not Found
+// import cabbagePlot2Img from '@/images/crops/cabbage/plot_stage_2.png'; // Removed due to Module Not Found
+// import cabbagePlot3Img from '@/images/crops/cabbage/plot_stage_3.png'; // Removed due to Module Not Found
+// import cabbagePlot4Img from '@/images/crops/cabbage/plot_stage_4.png'; // Removed due to Module Not Found
+// import cabbagePlot5Img from '@/images/crops/cabbage/plot_stage_5.png'; // Removed due to Module Not Found
 
 // --- Eggplant Images ---
 import eggplantSeedImg from '@/images/crops/eggplant/seed.png';
@@ -261,16 +261,16 @@ export const CROPS_DATA: Crop[] = [
     growTime: 16 * 1000,
     sellPrice: 18,
     seedPrice: 3,
-    seedShopImageUrl: broccoliSeedImg, 
+    // seedShopImageUrl: broccoliSeedImg, // Removed due to Module Not Found
     dataAiHintSeedShop: 'broccoli seeds',
-    harvestedCropImageUrl: broccoliHarvestedImg, 
+    // harvestedCropImageUrl: broccoliHarvestedImg, // Removed due to Module Not Found
     dataAiHintHarvestedCrop: 'broccoli floret',
     farmPlotImageUrls: [
-      broccoliPlot1Img,
-      broccoliPlot2Img,
-      broccoliPlot3Img,
-      broccoliPlot4Img,
-      broccoliPlot5Img,
+      // broccoliPlot1Img, // Removed due to Module Not Found
+      // broccoliPlot2Img, // Removed due to Module Not Found
+      // broccoliPlot3Img, // Removed due to Module Not Found
+      // broccoliPlot4Img, // Removed due to Module Not Found
+      // broccoliPlot5Img, // Removed due to Module Not Found
     ],
     dataAiHintFarmPlot: 'broccoli plant',
   },
@@ -377,14 +377,14 @@ export const CROPS_DATA: Crop[] = [
     seedPrice: 6,
     seedShopImageUrl: cabbageSeedImg, 
     dataAiHintSeedShop: 'cabbage seedpacket',
-    harvestedCropImageUrl: cabbageHarvestedImg, 
+    // harvestedCropImageUrl: cabbageHarvestedImg, // Removed due to Module Not Found
     dataAiHintHarvestedCrop: 'cabbage head',
     farmPlotImageUrls: [
-      cabbagePlot1Img,
-      cabbagePlot2Img,
-      cabbagePlot3Img,
-      cabbagePlot4Img,
-      cabbagePlot5Img,
+      // cabbagePlot1Img, // Removed due to Module Not Found
+      // cabbagePlot2Img, // Removed due to Module Not Found
+      // cabbagePlot3Img, // Removed due to Module Not Found
+      // cabbagePlot4Img, // Removed due to Module Not Found
+      // cabbagePlot5Img, // Removed due to Module Not Found
     ],
     dataAiHintFarmPlot: 'cabbage plant',
   },
@@ -427,4 +427,6 @@ export const CROPS_DATA: Crop[] = [
     dataAiHintFarmPlot: 'pumpkin plant',
   },
 ].sort((a, b) => a.seedPrice - b.seedPrice);
+
+
 
