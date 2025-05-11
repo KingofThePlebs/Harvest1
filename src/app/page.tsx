@@ -117,7 +117,7 @@ export default function HarvestClickerPage() {
     const seedInInventory = ownedSeeds.find(s => s.cropId === selectedSeedFromOwnedId);
     if (!seedInInventory || seedInInventory.quantity <= 0) {
         toast({ title: "Out of Seeds!", description: `You don't have any ${cropToPlant.name} seeds left.`, variant: "destructive" });
-        setSelectedSeedFromOwnedId(undefined); 
+        // setSelectedSeedFromOwnedId(undefined); // User wants to keep it selected
         return;
     }
 
@@ -133,14 +133,14 @@ export default function HarvestClickerPage() {
         const updatedSeeds = prevOwnedSeeds.map(s => 
             s.cropId === selectedSeedFromOwnedId ? {...s, quantity: s.quantity - 1} : s
         );
-        const currentSelectedSeed = updatedSeeds.find(s => s.cropId === selectedSeedFromOwnedId);
-        if (currentSelectedSeed && currentSelectedSeed.quantity <= 0) {
-             // Keep seed selected if other seeds of this type exist, otherwise this will deselect if it was the last one.
-            if (!updatedSeeds.some(s => s.cropId === selectedSeedFromOwnedId && s.quantity > 0)) {
-                setSelectedSeedFromOwnedId(undefined);
-            }
-        }
-        return updatedSeeds.filter(s => s.quantity > 0);
+        // User wants to keep seed selected even if quantity becomes 0
+        // const currentSelectedSeed = updatedSeeds.find(s => s.cropId === selectedSeedFromOwnedId);
+        // if (currentSelectedSeed && currentSelectedSeed.quantity <= 0) {
+        //      if (!updatedSeeds.some(s => s.cropId === selectedSeedFromOwnedId && s.quantity > 0)) {
+        //         setSelectedSeedFromOwnedId(undefined);
+        //     }
+        // }
+        return updatedSeeds.filter(s => s.quantity > 0 || s.cropId === selectedSeedFromOwnedId); // Keep selected seed even if 0
     });
 
     toast({
@@ -244,6 +244,7 @@ export default function HarvestClickerPage() {
         harvestedInventory,
         ownedSeeds,
         upgrades,
+        // selectedSeedFromOwnedId // Don't save transient UI state like selected seed
       };
       localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
       toast({
@@ -285,7 +286,16 @@ export default function HarvestClickerPage() {
               finalPlots = finalPlots.slice(0, expectedExpandedPlotCount);
             }
           } else { // Not expanded
-            if (finalPlots.length !== INITIAL_NUM_PLOTS) {
+            if (finalPlots.length > INITIAL_NUM_PLOTS) { // If saved with more plots but upgrade not bought (e.g. due to data manipulation or bug)
+               finalPlots = generateInitialPlots(INITIAL_NUM_PLOTS);
+            } else if (finalPlots.length < INITIAL_NUM_PLOTS && finalPlots.length > 0) { // If save has fewer plots than initial, but not 0 (corrupt)
+               const numToAdd = INITIAL_NUM_PLOTS - finalPlots.length;
+               const newPlots = Array.from({ length: numToAdd }, (_, i) => ({
+                id: `plot-loaded-initialfill-${finalPlots.length + i + 1}`,
+                isHarvestable: false,
+              }));
+              finalPlots = [...finalPlots, ...newPlots];
+            } else if (finalPlots.length === 0) { // If no plots in save, reset to initial
               finalPlots = generateInitialPlots(INITIAL_NUM_PLOTS);
             }
           }
@@ -307,7 +317,20 @@ export default function HarvestClickerPage() {
             description: "Could not load previous progress. Starting fresh.",
             variant: "destructive",
           });
+           // Reset to initial state if save data is malformed
+            setPlots(generateInitialPlots(INITIAL_NUM_PLOTS));
+            setCurrency(INITIAL_CURRENCY);
+            setHarvestedInventory([]);
+            setOwnedSeeds([]);
+            setUpgrades(initialUpgradesState);
+            setSelectedSeedFromOwnedId(undefined);
         }
+      } else {
+        // No save data found, start fresh (initial state is already set)
+         toast({
+            title: "Welcome Farmer!",
+            description: "Starting a new game. Good luck!",
+          });
       }
     } catch (error) {
       console.error("Failed to load game:", error);
@@ -354,22 +377,46 @@ export default function HarvestClickerPage() {
 
   useEffect(() => {
     if (isClient) {
-        loadGame();
+      const handleBeforeUnload = () => {
+        saveGame();
+      };
+
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      loadGame(); 
+
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+      };
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClient]); // loadGame is stable
+  }, [isClient, saveGame, loadGame]);
 
   useEffect(() => {
     if (isClient) {
-        if (upgrades.expandFarm === false && plots.length > INITIAL_NUM_PLOTS) {
-            setPlots(generateInitialPlots(INITIAL_NUM_PLOTS));
+        // This effect ensures plot count consistency if 'expandFarm' upgrade status changes externally or due to bugs
+        const expectedPlotCount = upgrades.expandFarm ? INITIAL_NUM_PLOTS + PLOT_EXPANSION_AMOUNT : INITIAL_NUM_PLOTS;
+        if (plots.length !== expectedPlotCount) {
+            const newPlots = Array.from({ length: expectedPlotCount }, (_, i) => {
+                const existingPlot = plots.find(p => p.id === `plot-${i + 1}`);
+                return existingPlot || { id: `plot-${i + 1}`, isHarvestable: false };
+            });
+
+            // Ensure IDs are unique if regeneration is needed
+            const uniqueNewPlots = newPlots.map((plot, index) => ({
+                ...plot,
+                id: `plot-${index + 1}` // Re-assign IDs to ensure consistency from plot-1 up to expectedPlotCount
+            }));
+            setPlots(uniqueNewPlots);
         }
     }
-  }, [isClient, upgrades.expandFarm, plots.length]);
+  }, [isClient, upgrades.expandFarm, plots]);
 
 
   if (!isClient) {
-    return null; 
+    return (
+      <div className="flex flex-col min-h-screen bg-background items-center justify-center">
+        <div className="text-2xl text-primary-foreground animate-pulse">Loading Farm...</div>
+      </div>
+    );
   }
 
   return (
@@ -426,4 +473,3 @@ export default function HarvestClickerPage() {
     </div>
   );
 }
-
