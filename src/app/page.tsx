@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { PlotState, InventoryItem, Crop, UpgradesState, UpgradeId, LeaderboardEntry } from '@/types';
 import { CROPS_DATA } from '@/config/crops';
 import { UPGRADES_DATA } from '@/config/upgrades';
@@ -53,6 +53,11 @@ export default function HarvestClickerPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [isLeaderboardLoading, setIsLeaderboardLoading] = useState<boolean>(false);
   const [isSubmittingScore, setIsSubmittingScore] = useState<boolean>(false);
+  const isSubmittingScoreRef = useRef(isSubmittingScore);
+
+  useEffect(() => {
+    isSubmittingScoreRef.current = isSubmittingScore;
+  }, [isSubmittingScore]);
 
 
   // Initialize localPlayerId and load player name from localStorage
@@ -101,23 +106,21 @@ export default function HarvestClickerPage() {
       toast({ title: "Invalid Name", description: "Please enter a valid player name.", variant: "destructive"});
       return;
     }
-    if (isSubmittingScore) return;
+    if (isSubmittingScoreRef.current) return;
 
     setIsSubmittingScore(true);
     const result = await submitPlayerScore(localPlayerId, playerNameInput.trim(), currency);
     setIsSubmittingScore(false);
 
     if (result.success && result.finalPlayerName && result.finalPlayerId) {
-      setPlayerName(result.finalPlayerName); // Update confirmed player name
+      setPlayerName(result.finalPlayerName); 
       localStorage.setItem(PLAYER_NAME_KEY, result.finalPlayerName);
-      // If localPlayerId was somehow different from finalPlayerId (e.g. server assigned one), update it.
-      // For this implementation, they should be the same as we use playerId as doc ID.
       if (localPlayerId !== result.finalPlayerId) {
          setLocalPlayerId(result.finalPlayerId);
          localStorage.setItem(PLAYER_ID_KEY, result.finalPlayerId);
       }
       toast({ title: "Success", description: `Your name "${result.finalPlayerName}" and score have been submitted!` });
-      fetchLeaderboardData(); // Refresh leaderboard
+      fetchLeaderboardData(); 
     } else {
       toast({ title: "Error", description: result.message || "Failed to submit name.", variant: "destructive" });
     }
@@ -125,24 +128,23 @@ export default function HarvestClickerPage() {
   
   // Auto-submit score when currency changes significantly or playerName is set
   useEffect(() => {
-    if (isClient && localPlayerId && playerName.trim() && currency > 0) { // Only submit if name is confirmed
+    if (isClient && localPlayerId && playerName.trim() && currency > 0) { 
       const timer = setTimeout(async () => {
-        if (isSubmittingScore) return;
+        if (isSubmittingScoreRef.current) return; 
+        
         setIsSubmittingScore(true);
-        // console.log(`Auto-submitting score for ${playerName} (${localPlayerId}): ${currency}`);
         const result = await submitPlayerScore(localPlayerId, playerName, currency);
         setIsSubmittingScore(false);
+
         if (result.success) {
           fetchLeaderboardData();
         } else {
           // console.warn("Auto score submission failed:", result.message);
-          // Potentially notify user if the name became invalid or taken by someone else after initial set.
-          // For now, silent failure for auto-updates to avoid spamming toasts.
         }
-      }, 2000); // Debounce auto-submit
+      }, 2000); 
       return () => clearTimeout(timer);
     }
-  }, [currency, playerName, localPlayerId, isClient, fetchLeaderboardData, isSubmittingScore]);
+  }, [currency, playerName, localPlayerId, isClient, fetchLeaderboardData]);
 
 
   const processedLeaderboardData = useMemo(() => {
@@ -347,8 +349,7 @@ export default function HarvestClickerPage() {
         harvestedInventory,
         ownedSeeds,
         upgrades,
-        playerName, // Save the confirmed player name
-        // localPlayerId is already in localStorage, no need to duplicate here
+        playerName, 
       };
       localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
       toast({
@@ -369,7 +370,6 @@ export default function HarvestClickerPage() {
     if (!isClient) return;
     try {
       const savedData = localStorage.getItem(SAVE_GAME_KEY);
-      // Player ID and Name are loaded in initial useEffect
       if (savedData) {
         const gameState = JSON.parse(savedData);
         if (gameState && typeof gameState.currency === 'number' && Array.isArray(gameState.plots)) {
@@ -410,11 +410,9 @@ export default function HarvestClickerPage() {
           setHarvestedInventory(gameState.harvestedInventory || []);
           setOwnedSeeds(gameState.ownedSeeds || []);
           setUpgrades(finalUpgrades);
-          // PlayerName is loaded from its own localStorage key, but if it's in save data, use it.
-          // This helps if PLAYER_NAME_KEY was cleared but game data exists.
           if (gameState.playerName) {
             setPlayerName(gameState.playerName);
-            setPlayerNameInput(gameState.playerName); // Sync input field
+            setPlayerNameInput(gameState.playerName); 
           }
           setSelectedSeedFromOwnedId(undefined); 
 
@@ -428,7 +426,6 @@ export default function HarvestClickerPage() {
             description: "Could not load previous progress. Starting fresh.",
             variant: "destructive",
           });
-            // Reset to initial state (player ID/name from localStorage will persist)
             setPlots(generateInitialPlots(INITIAL_NUM_PLOTS));
             setCurrency(INITIAL_CURRENCY);
             setHarvestedInventory([]);
@@ -442,7 +439,7 @@ export default function HarvestClickerPage() {
             description: "Starting a new game. Good luck!",
           });
       }
-      fetchLeaderboardData(); // Fetch leaderboard after loading game
+      fetchLeaderboardData(); 
     } catch (error) {
       console.error("Failed to load game:", error);
       toast({
@@ -463,14 +460,11 @@ export default function HarvestClickerPage() {
   const clearSaveData = () => {
     if (!isClient) return;
     localStorage.removeItem(SAVE_GAME_KEY);
-    localStorage.removeItem(PLAYER_NAME_KEY); // Also clear saved player name
-    // Don't clear PLAYER_ID_KEY, as it's the persistent identifier.
-    // If a user wants a *completely* new identity, they'd clear browser data.
+    localStorage.removeItem(PLAYER_NAME_KEY); 
     toast({
       title: "Game Save Data Cleared",
       description: "Your saved game progress and name have been removed. Reset the game or refresh to start fresh with your farmer ID.",
     });
-     // Optionally, reset the game state to initial values immediately
     setPlots(generateInitialPlots(INITIAL_NUM_PLOTS));
     setCurrency(INITIAL_CURRENCY);
     setHarvestedInventory([]);
@@ -479,7 +473,7 @@ export default function HarvestClickerPage() {
     setUpgrades(initialUpgradesState);
     setPlayerName(""); 
     setPlayerNameInput("");
-    fetchLeaderboardData(); // Refresh leaderboard
+    fetchLeaderboardData(); 
   };
   
   const resetGame = () => {
@@ -489,36 +483,27 @@ export default function HarvestClickerPage() {
     setOwnedSeeds([]);
     setSelectedSeedFromOwnedId(undefined);
     setUpgrades(initialUpgradesState);
-    // Player name and ID remain as they are identity, not game progress.
-    // If they want to change name, they use the input field.
-
     toast({
       title: "Game Reset",
       description: "Started a new farm! Your saved data (if any) is still preserved unless cleared manually.",
     });
-    // Score should be updated on leaderboard if name is set
     if (localPlayerId && playerName.trim()) {
         submitPlayerScore(localPlayerId, playerName, INITIAL_CURRENCY).then(() => fetchLeaderboardData());
     }
   };
   
-  // Effect for loading game on initial client mount
   useEffect(() => {
     if (isClient) {
       loadGame();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClient]); // loadGame is stable
+  }, [isClient]); 
 
-  // Effect for autosave on beforeunload
   useEffect(() => {
     if (isClient) {
       const handleBeforeUnload = () => {
         saveGame();
-        // Also try to submit score one last time, but don't block page unload
         if (localPlayerId && playerName.trim()) {
-            // Use navigator.sendBeacon if available for reliability on unload, or a quick async call
-            // For simplicity here, direct call, might not always complete.
             submitPlayerScore(localPlayerId, playerName, currency);
         }
       };
@@ -539,7 +524,7 @@ export default function HarvestClickerPage() {
             let finalPlots = [...basePlots];
             if (newPlotsNeeded > 0) {
                 const additionalPlots = Array.from({ length: newPlotsNeeded }, (_, i) => ({
-                    id: `plot-${basePlots.length + i + 1}`, 
+                    id: `plot-autogen-${basePlots.length + i + 1}`, 
                     isHarvestable: false,
                 }));
                 finalPlots = [...basePlots, ...additionalPlots];
@@ -555,7 +540,7 @@ export default function HarvestClickerPage() {
         }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClient, upgrades.expandFarm, plots.length]); 
+  }, [isClient, upgrades.expandFarm]); // Removed plots.length as it was causing re-runs when plots were re-IDed. Logic should now stabilize based on upgrade state.
 
 
   if (!isClient) {
