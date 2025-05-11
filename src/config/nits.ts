@@ -11,7 +11,7 @@ export const NITS_DATA: Nit[] = [
   { 
     id: 'green_nit', 
     name: 'Green Nit', 
-    sellPrice: 2, 
+    sellPrice: 1, 
     icon: Gem, 
     // imageUrl: greenNitImg, 
     dataAiHint: 'green gem' 
@@ -49,3 +49,4 @@ export const NITS_DATA: Nit[] = [
     dataAiHint: 'yellow gem' 
   },
 ];
+
