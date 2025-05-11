@@ -1,4 +1,5 @@
 
+import type { StaticImageData } from 'next/image';
 import type { LucideIcon } from 'lucide-react';
 
 export interface Crop {
@@ -7,20 +8,20 @@ export interface Crop {
   growTime: number; // in milliseconds
   sellPrice: number;
   seedPrice: number; // Cost to buy the seed
-  icon?: LucideIcon; // For crops that use Lucide icons
+  icon?: LucideIcon; // For crops that use Lucide icons as a fallback
 
-  // Specific images for different contexts
-  seedShopImageUrl?: string; // Image shown in the seed shop AND in "My Seeds" inventory (e.g., seed packet)
-  harvestedCropImageUrl?: string; // Image shown in sell market inventory (e.g., the harvested crop)
-  farmPlotImageUrls?: string[]; // Array of 5 image URLs for growth stages on the farm plot
+  // Specific images for different contexts, now using StaticImageData
+  seedShopImageUrl?: StaticImageData; 
+  harvestedCropImageUrl?: StaticImageData; 
+  farmPlotImageUrls?: StaticImageData[]; 
   
-  // Corresponding AI hints for image generation
-  dataAiHintSeedShop?: string; // For seed packet/bag
-  dataAiHintHarvestedCrop?: string; // For harvested crop
-  dataAiHintFarmPlot?: string; // General hint for the growing plant across stages
+  // Corresponding AI hints for image generation (if ever used with AI image gen)
+  dataAiHintSeedShop?: string; 
+  dataAiHintHarvestedCrop?: string; 
+  dataAiHintFarmPlot?: string; 
 
-  // Fallback if specific images are not provided (less preferred now)
-  imageUrl?: string; 
+  // Fallback if specific images are not provided
+  imageUrl?: StaticImageData; // Changed from string
   dataAiHint?: string; 
 }
 
@@ -55,4 +56,3 @@ export interface UpgradeDefinition {
   cost: number;
   icon: LucideIcon;
 }
-
