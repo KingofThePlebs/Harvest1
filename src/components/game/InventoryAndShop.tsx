@@ -1,15 +1,18 @@
 
 import type { FC } from 'react';
 import Image from 'next/image';
-import type { InventoryItem, Crop, UpgradeDefinition, UpgradesState, UpgradeId, NeittType, OwnedNeitt } from '@/types'; // Renamed SlimeType to NeittType, OwnedSlime to OwnedNeitt
+import type { InventoryItem, Crop, UpgradeDefinition, UpgradesState, UpgradeId, NeittType, OwnedNeitt, Nit, OwnedNit } from '@/types';
 import { CROPS_DATA } from '@/config/crops';
-// Removed: import { SLIMES_DATA } from '@/config/slimes';
+import { NEITTS_DATA } from '@/config/neitts'; // Import NEITTS_DATA
+import { NITS_DATA } from '@/config/nits'; // Import NITS_DATA
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide } from 'lucide-react'; // Renamed SlimeIconLucide alias
+import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress'; // Import Progress component
+import { useState, useEffect } from 'react';
 
 
 interface InventoryAndShopProps {
@@ -24,10 +27,13 @@ interface InventoryAndShopProps {
   onBuyUpgrade: (upgradeId: UpgradeId) => void;
   getEffectiveCropSellPrice: (basePrice: number) => number;
 
-  // Neitt Farm props
-  neittsData: NeittType[]; // Renamed from slimesData, type to NeittType
-  ownedNeitts: OwnedNeitt[]; // Renamed from ownedSlimes, type to OwnedNeitt
-  onBuyNeitt: (neittId: string) => void; // Renamed from onBuySlime, param to neittId
+  neittsData: NeittType[];
+  ownedNeitts: OwnedNeitt[]; // Now an array of instances
+  onBuyNeitt: (neittId: string) => void;
+
+  producedNits: OwnedNit[];
+  nitsData: Nit[];
+  onSellNit: (nitId: string, quantity: number) => void;
 }
 
 const InventoryAndShop: FC<InventoryAndShopProps> = ({
@@ -41,12 +47,25 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   purchasedUpgrades,
   onBuyUpgrade,
   getEffectiveCropSellPrice,
-  // Neitt Farm props
-  neittsData, // Renamed from slimesData
-  ownedNeitts, // Renamed from ownedSlimes
-  onBuyNeitt, // Renamed from onBuySlime
+  neittsData,
+  ownedNeitts,
+  onBuyNeitt,
+  producedNits,
+  nitsData,
+  onSellNit,
 }) => {
   const getCropById = (cropId: string): Crop | undefined => CROPS_DATA.find(c => c.id === cropId);
+  const getNitById = (nitId: string): Nit | undefined => NITS_DATA.find(n => n.id === nitId);
+
+  // State to force re-render for progress bars
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTick(prevTick => prevTick + 1);
+    }, 500); // Refresh progress bars every 0.5 seconds
+    return () => clearInterval(interval);
+  }, []);
+
 
   return (
     <Card className="shadow-lg">
@@ -57,12 +76,12 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
             <TabsTrigger value="sellMarket" className="flex items-center gap-2"><Handshake className="w-4 h-4" />Sell Market</TabsTrigger>
             <TabsTrigger value="upgrades" className="flex items-center gap-2"><TrendingUp className="w-4 h-4" />Upgrades</TabsTrigger>
             <TabsTrigger value="town" className="flex items-center gap-2"><Building className="w-4 h-4" />Town</TabsTrigger>
-            <TabsTrigger value="neittFarm" className="flex items-center gap-2"><NeittIconLucide className="w-4 h-4" />Neitt Farm</TabsTrigger> {/* Renamed value and text */}
+            <TabsTrigger value="neittFarm" className="flex items-center gap-2"><NeittIconLucide className="w-4 h-4" />Neitt Farm</TabsTrigger>
           </TabsList>
         </CardHeader>
 
         <TabsContent value="mySeeds">
-          <ScrollArea className="h-[300px] sm:h-[400px] lg:max-h-[60vh]">
+          <ScrollArea className="h-[300px] sm:h-[400px] lg:max-h-[calc(60vh-100px)]">
             <CardContent className="space-y-4 pt-4">
               <CardTitle className="text-xl text-primary-foreground/80">Your Seed Inventory</CardTitle>
               <CardDescription>Select a seed from your inventory to plant on an empty plot.</CardDescription>
@@ -118,57 +137,95 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
         </TabsContent>
 
         <TabsContent value="sellMarket">
-          <ScrollArea className="h-[300px] sm:h-[400px] lg:max-h-[60vh]">
+          <ScrollArea className="h-[300px] sm:h-[400px] lg:max-h-[calc(60vh-100px)]">
             <CardContent className="space-y-4 pt-4">
-              <CardTitle className="text-xl text-primary-foreground/80">Sell Harvested Crops</CardTitle>
-              <CardDescription>Sell your harvested crops for gold.</CardDescription>
+              <CardTitle className="text-xl text-primary-foreground/80">Sell Harvested Items</CardTitle>
+              <CardDescription>Sell your harvested crops and produced nits for gold.</CardDescription>
               <div className="flex items-center space-x-2 text-lg font-semibold mb-4">
                   <Coins className="h-5 w-5 text-primary" />
                   <span>Your Gold: {currency}</span>
               </div>
-              {harvestedInventory.length === 0 ? (
-                <p className="text-muted-foreground">Nothing to sell. Harvest some crops first!</p>
+              {harvestedInventory.length === 0 && producedNits.length === 0 ? (
+                <p className="text-muted-foreground">Nothing to sell. Harvest some crops or collect Nits from your Neitts!</p>
               ) : (
-                <ul className="space-y-3">
-                  {harvestedInventory.map(item => {
-                    const crop = getCropById(item.cropId);
-                    if (!crop) return null;
-                    const IconComponent = crop.icon;
-                    const effectiveSellPrice = getEffectiveCropSellPrice(crop.sellPrice);
-                    return (
-                      <li key={item.cropId} className="flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm hover:bg-secondary/50">
-                        <div className="flex items-center space-x-3">
-                          {crop.harvestedCropImageUrl && typeof crop.harvestedCropImageUrl === 'object' ? (
-                            <Image
-                              src={crop.harvestedCropImageUrl}
-                              alt={crop.name}
-                              width={32}
-                              height={32}
-                              className="object-contain rounded-md"
-                              data-ai-hint={crop.dataAiHintHarvestedCrop || crop.dataAiHint}
-                            />
-                          ) : IconComponent ? (
-                            <IconComponent className="w-8 h-8 text-green-600" />
-                          ) : <Leaf className="w-8 h-8 text-gray-400" />}
-                          <div>
-                            <p className="font-semibold">{crop.name} <span className="text-xs text-muted-foreground">(Qty: {item.quantity})</span></p>
-                            <p className="text-xs text-muted-foreground">Sell Price: <Coins className="inline w-3 h-3 mr-0.5" />{effectiveSellPrice} each</p>
-                          </div>
-                        </div>
-                        <Button size="sm" onClick={() => onSellCrop(item.cropId, 1)} className="text-xs h-8">
-                          Sell 1
-                        </Button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                <>
+                  {harvestedInventory.length > 0 && (
+                    <>
+                      <h3 className="text-md font-semibold text-muted-foreground">Crops:</h3>
+                      <ul className="space-y-3">
+                        {harvestedInventory.map(item => {
+                          const crop = getCropById(item.cropId);
+                          if (!crop) return null;
+                          const IconComponent = crop.icon;
+                          const effectiveSellPrice = getEffectiveCropSellPrice(crop.sellPrice);
+                          return (
+                            <li key={`crop-${item.cropId}`} className="flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm hover:bg-secondary/50">
+                              <div className="flex items-center space-x-3">
+                                {crop.harvestedCropImageUrl && typeof crop.harvestedCropImageUrl === 'object' ? (
+                                  <Image
+                                    src={crop.harvestedCropImageUrl}
+                                    alt={crop.name}
+                                    width={32}
+                                    height={32}
+                                    className="object-contain rounded-md"
+                                    data-ai-hint={crop.dataAiHintHarvestedCrop || crop.dataAiHint}
+                                  />
+                                ) : IconComponent ? (
+                                  <IconComponent className="w-8 h-8 text-green-600" />
+                                ) : <Leaf className="w-8 h-8 text-gray-400" />}
+                                <div>
+                                  <p className="font-semibold">{crop.name} <span className="text-xs text-muted-foreground">(Qty: {item.quantity})</span></p>
+                                  <p className="text-xs text-muted-foreground">Sell Price: <Coins className="inline w-3 h-3 mr-0.5" />{effectiveSellPrice} each</p>
+                                </div>
+                              </div>
+                              <Button size="sm" onClick={() => onSellCrop(item.cropId, 1)} className="text-xs h-8">
+                                Sell 1
+                              </Button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </>
+                  )}
+                  {producedNits.length > 0 && (
+                    <>
+                      <Separator className="my-4"/>
+                      <h3 className="text-md font-semibold text-muted-foreground">Nits:</h3>
+                      <ul className="space-y-3">
+                        {producedNits.map(item => {
+                          const nit = getNitById(item.nitId);
+                          if (!nit) return null;
+                          const NitIconComponent = nit.icon || Gem;
+                          return (
+                            <li key={`nit-${item.nitId}`} className="flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm hover:bg-secondary/50">
+                              <div className="flex items-center space-x-3">
+                                {nit.imageUrl ? (
+                                  <Image src={nit.imageUrl} alt={nit.name} width={32} height={32} className="object-contain rounded-md" data-ai-hint={nit.dataAiHint}/>
+                                ) : (
+                                  <NitIconComponent className="w-8 h-8 text-purple-500" />
+                                )}
+                                <div>
+                                  <p className="font-semibold">{nit.name} <span className="text-xs text-muted-foreground">(Qty: {item.quantity})</span></p>
+                                  <p className="text-xs text-muted-foreground">Sell Price: <Coins className="inline w-3 h-3 mr-0.5" />{nit.sellPrice} each</p>
+                                </div>
+                              </div>
+                              <Button size="sm" onClick={() => onSellNit(item.nitId, 1)} className="text-xs h-8">
+                                Sell 1
+                              </Button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </>
+                  )}
+                </>
               )}
             </CardContent>
           </ScrollArea>
         </TabsContent>
 
         <TabsContent value="upgrades">
-          <ScrollArea className="h-[300px] sm:h-[400px] lg:max-h-[60vh]">
+          <ScrollArea className="h-[300px] sm:h-[400px] lg:max-h-[calc(60vh-100px)]">
             <CardContent className="space-y-4 pt-4">
               <CardTitle className="text-xl text-primary-foreground/80">Farm Upgrades</CardTitle>
               <CardDescription>Purchase upgrades to improve your farm.</CardDescription>
@@ -214,7 +271,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
         </TabsContent>
 
         <TabsContent value="town">
-          <ScrollArea className="h-[300px] sm:h-[400px] lg:max-h-[60vh]">
+          <ScrollArea className="h-[300px] sm:h-[400px] lg:max-h-[calc(60vh-100px)]">
             <CardContent className="space-y-4 pt-4">
               <CardTitle className="text-xl text-primary-foreground/80">Welcome to Town!</CardTitle>
               <CardDescription>Explore different buildings and features in town.</CardDescription>
@@ -249,30 +306,38 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
           </ScrollArea>
         </TabsContent>
 
-        <TabsContent value="neittFarm"> {/* Renamed value from slimeFarm */}
-          <ScrollArea className="h-[300px] sm:h-[400px] lg:max-h-[60vh]">
+        <TabsContent value="neittFarm">
+          <ScrollArea className="h-[300px] sm:h-[400px] lg:max-h-[calc(60vh-100px)]">
             <CardContent className="space-y-6 pt-4">
-              {/* Neitt Display Area */}
               <div>
-                <CardTitle className="text-xl text-primary-foreground/80 mb-2">Your Neitt Pen</CardTitle> {/* Renamed Slime to Neitt */}
-                <CardDescription className="mb-4">These are the neitts you own. Watch them jiggle!</CardDescription> {/* Renamed slimes to neitts */}
-                {ownedNeitts.length === 0 ? ( // Renamed ownedSlimes to ownedNeitts
-                  <p className="text-muted-foreground text-center py-4">Your neitt pen is empty. Buy some neitts from the shop below!</p> // Renamed slime to neitt, slimes to neitts
+                <CardTitle className="text-xl text-primary-foreground/80 mb-2">Your Neitt Pen</CardTitle>
+                <CardDescription className="mb-4">Your Neitts automatically produce Nits over time.</CardDescription>
+                {ownedNeitts.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">Your neitt pen is empty. Buy some neitts from the shop below!</p>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 p-2 bg-background/50 rounded-md">
-                    {ownedNeitts.map(ownedNeitt => { // Renamed ownedSlime to ownedNeitt
-                      const neittDetails = neittsData.find(s => s.id === ownedNeitt.neittTypeId); // Renamed slimeDetails to neittDetails, slimeTypeId to neittTypeId
+                    {ownedNeitts.map(ownedNeittInstance => {
+                      const neittDetails = neittsData.find(s => s.id === ownedNeittInstance.neittTypeId);
                       if (!neittDetails) return null;
-                      const NeittIcon = neittDetails.icon; // Renamed SlimeIcon to NeittIcon
+                      const NeittIcon = neittDetails.icon;
+                      
+                      const elapsedTime = Date.now() - ownedNeittInstance.lastProductionCycleStartTime;
+                      const productionProgress = Math.min(100, (elapsedTime / neittDetails.productionTime) * 100);
+
                       return (
-                        <Card key={neittDetails.id} className="flex flex-col items-center p-3 bg-secondary/40 shadow-sm rounded-lg hover:shadow-md transition-shadow">
+                        <Card key={ownedNeittInstance.instanceId} className="flex flex-col items-center p-3 bg-secondary/40 shadow-sm rounded-lg hover:shadow-md transition-shadow">
                           {neittDetails.imageUrl ? (
-                             <Image src={neittDetails.imageUrl} alt={neittDetails.name} width={48} height={48} className="rounded-full mb-2 object-cover ring-2 ring-primary/50" data-ai-hint={neittDetails.dataAiHint} />
+                             <Image src={neittDetails.imageUrl} alt={neittDetails.name} width={48} height={48} className="rounded-full mb-1 object-cover ring-2 ring-primary/50" data-ai-hint={neittDetails.dataAiHint} />
                           ) : NeittIcon ? (
-                            <NeittIcon className="w-12 h-12 mb-2" style={{ color: neittDetails.color || 'hsl(var(--primary))' }} />
-                          ) : <NeittIconLucide className="w-12 h-12 mb-2 text-muted-foreground" />}
+                            <NeittIcon className="w-12 h-12 mb-1" style={{ color: neittDetails.color || 'hsl(var(--primary))' }} />
+                          ) : <NeittIconLucide className="w-12 h-12 mb-1 text-muted-foreground" />}
                           <p className="font-semibold text-sm text-center truncate w-full">{neittDetails.name}</p>
-                          <p className="text-xs text-muted-foreground">Qty: {ownedNeitt.quantity}</p>
+                          <div className="w-full px-2 mt-1">
+                             <Progress value={productionProgress} className="h-2 w-full transition-all duration-100" />
+                             <p className="text-xs text-muted-foreground text-center mt-0.5">
+                               Producing {NITS_DATA.find(n=>n.id === neittDetails.producesNitId)?.name || 'Nit'}...
+                             </p>
+                          </div>
                         </Card>
                       );
                     })}
@@ -282,17 +347,16 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
 
               <Separator className="my-6 border-border/50" />
 
-              {/* Neitt Shop Area */}
               <div>
-                <CardTitle className="text-xl text-primary-foreground/80 mb-2">Neitt Shop</CardTitle> {/* Renamed Slime to Neitt */}
-                <CardDescription className="mb-4">Purchase new neitts to add to your farm.</CardDescription> {/* Renamed slimes to neitts */}
+                <CardTitle className="text-xl text-primary-foreground/80 mb-2">Neitt Shop</CardTitle>
+                <CardDescription className="mb-4">Purchase new neitts to add to your farm.</CardDescription>
                 <div className="flex items-center space-x-2 text-lg font-semibold mb-4">
                     <Coins className="h-5 w-5 text-primary" />
                     <span>Your Gold: {currency}</span>
                 </div>
                 <ul className="space-y-3">
-                  {neittsData.map(neitt => { // Renamed slime to neitt
-                    const NeittShopIcon = neitt.icon; // Renamed SlimeShopIcon to NeittShopIcon
+                  {neittsData.map(neitt => {
+                    const NeittShopIcon = neitt.icon;
                     const canAfford = currency >= neitt.cost;
                     return (
                       <li key={neitt.id} className={`flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm hover:bg-secondary/50 transition-all ${!canAfford ? 'opacity-60' : ''}`}>
@@ -306,11 +370,12 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                             <p className="font-semibold">{neitt.name}</p>
                             <p className="text-xs text-muted-foreground max-w-xs truncate">{neitt.description}</p>
                              <p className="text-xs text-muted-foreground">Cost: <Coins className="inline w-3 h-3 mr-0.5" />{neitt.cost}</p>
+                             <p className="text-xs text-muted-foreground">Produces: {NITS_DATA.find(n=>n.id === neitt.producesNitId)?.name || 'Nit'} / {neitt.productionTime/1000}s</p>
                           </div>
                         </div>
                         <Button
                           size="sm"
-                          onClick={() => onBuyNeitt(neitt.id)} // Renamed onBuySlime to onBuyNeitt
+                          onClick={() => onBuyNeitt(neitt.id)}
                           disabled={!canAfford}
                           className="text-xs h-8 min-w-[70px]"
                           title={!canAfford ? `Need ${neitt.cost} gold` : `Buy for ${neitt.cost} gold`}

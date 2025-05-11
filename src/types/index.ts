@@ -64,11 +64,28 @@ export interface NeittType {
   cost: number;
   icon: LucideIcon;
   color?: string; // Optional: for styling the icon or UI elements
-  imageUrl?: string; // Placeholder for now, will become StaticImageData
+  imageUrl?: string; 
+  dataAiHint?: string;
+  producesNitId: string; // ID of the Nit this Neitt produces
+  productionTime: number; // Time in milliseconds to produce one Nit
+}
+
+export interface OwnedNeitt { // Represents an individual Neitt instance
+  instanceId: string; // Unique ID for this specific Neitt
+  neittTypeId: string;
+  lastProductionCycleStartTime: number; // Timestamp when the current production cycle started
+}
+
+export interface Nit {
+  id: string;
+  name: string;
+  sellPrice: number;
+  icon?: LucideIcon; // Optional icon for the Nit
+  imageUrl?: StaticImageData; // Optional image for the Nit
   dataAiHint?: string;
 }
 
-export interface OwnedNeitt {
-  neittTypeId: string; // Renamed from slimeTypeId
+export interface OwnedNit {
+  nitId: string;
   quantity: number;
 }

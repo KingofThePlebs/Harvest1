@@ -2,10 +2,11 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import type { PlotState, InventoryItem, Crop, UpgradesState, UpgradeId, OwnedNeitt } from '@/types'; // Changed OwnedSlime to OwnedNeitt
+import type { PlotState, InventoryItem, Crop, UpgradesState, UpgradeId, OwnedNeitt, OwnedNit, Nit } from '@/types';
 import { CROPS_DATA } from '@/config/crops';
 import { UPGRADES_DATA } from '@/config/upgrades';
-import { NEITTS_DATA } from '@/config/neitts'; // Changed SLIMES_DATA to NEITTS_DATA and path
+import { NEITTS_DATA } from '@/config/neitts';
+import { NITS_DATA } from '@/config/nits'; // Import NITS_DATA
 import GameHeader from '@/components/game/GameHeader';
 import PlantingArea from '@/components/game/PlantingArea';
 import SeedShopPanel from '@/components/game/SeedShopPanel';
@@ -43,14 +44,64 @@ export default function HarvestClickerPage() {
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
 
-  // Neitt state
-  const [ownedNeitts, setOwnedNeitts] = useState<OwnedNeitt[]>([]); // Renamed from ownedSlimes, type to OwnedNeitt
+  const [ownedNeitts, setOwnedNeitts] = useState<OwnedNeitt[]>([]);
+  const [producedNits, setProducedNits] = useState<OwnedNit[]>([]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setIsClient(true);
     }
   }, []);
+
+  // Neitt Production Logic
+  useEffect(() => {
+    if (!isClient) return;
+
+    const productionInterval = setInterval(() => {
+      const now = Date.now();
+      
+      setOwnedNeitts(prevOwnedNeitts => {
+        let hasNeittStateChanged = false;
+        const newlyProducedNitsMapForThisTick = new Map<string, number>();
+
+        const nextOwnedNeitts = prevOwnedNeitts.map(neittInstance => {
+          const neittType = NEITTS_DATA.find(nt => nt.id === neittInstance.neittTypeId);
+          if (!neittType) return neittInstance;
+
+          const elapsedTime = now - neittInstance.lastProductionCycleStartTime;
+          if (elapsedTime >= neittType.productionTime) {
+            const currentAmount = newlyProducedNitsMapForThisTick.get(neittType.producesNitId) || 0;
+            newlyProducedNitsMapForThisTick.set(neittType.producesNitId, currentAmount + 1);
+            hasNeittStateChanged = true;
+            return { ...neittInstance, lastProductionCycleStartTime: now };
+          }
+          return neittInstance;
+        });
+
+        if (newlyProducedNitsMapForThisTick.size > 0) {
+          setProducedNits(currentGlobalProducedNits => {
+            const updatedGlobalNits = [...currentGlobalProducedNits];
+            newlyProducedNitsMapForThisTick.forEach((quantity, nitId) => {
+              const existingNitIndex = updatedGlobalNits.findIndex(n => n.nitId === nitId);
+              if (existingNitIndex > -1) {
+                updatedGlobalNits[existingNitIndex].quantity += quantity;
+              } else {
+                updatedGlobalNits.push({ nitId, quantity });
+              }
+            });
+            return updatedGlobalNits.filter(n => n.quantity > 0);
+          });
+        }
+        
+        return hasNeittStateChanged ? nextOwnedNeitts : prevOwnedNeitts;
+      });
+
+    }, 1000); // Check every second
+
+    return () => clearInterval(productionInterval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isClient]);
+
 
   const getEffectiveCropSeedPrice = useCallback((basePrice: number) => {
     return upgrades.bulkDiscount ? Math.ceil(basePrice * 0.9) : basePrice;
@@ -237,29 +288,62 @@ export default function HarvestClickerPage() {
 
   }, [currency, upgrades, toast, plots]);
 
-  const handleBuyNeitt = useCallback((neittId: string) => { // Renamed from handleBuySlime, param to neittId
-    const neittToBuy = NEITTS_DATA.find(s => s.id === neittId); // Renamed slimeToBuy to neittToBuy, use NEITTS_DATA
+  const handleBuyNeitt = useCallback((neittId: string) => {
+    const neittToBuy = NEITTS_DATA.find(s => s.id === neittId);
     if (!neittToBuy) {
-      toast({ title: "Neitt not found!", variant: "destructive" }); // Renamed Slime to Neitt
+      toast({ title: "Neitt not found!", variant: "destructive" });
       return;
     }
     if (currency < neittToBuy.cost) {
-      toast({ title: "Not Enough Gold!", description: `You need ${neittToBuy.cost} gold for a ${neittToBuy.name}.`, variant: "destructive" }); // Renamed Slime to Neitt
+      toast({ title: "Not Enough Gold!", description: `You need ${neittToBuy.cost} gold for a ${neittToBuy.name}.`, variant: "destructive" });
       return;
     }
 
     setCurrency(prev => prev - neittToBuy.cost);
-    setOwnedNeitts(prevOwnedNeitts => { // Renamed setOwnedSlimes to setOwnedNeitts
-      const existingNeittIndex = prevOwnedNeitts.findIndex(item => item.neittTypeId === neittId); // Renamed slimeTypeId to neittTypeId
-      if (existingNeittIndex > -1) {
-        const updatedNeitts = [...prevOwnedNeitts]; // Renamed updatedSlimes to updatedNeitts
-        updatedNeitts[existingNeittIndex].quantity += 1;
-        return updatedNeitts;
-      }
-      return [...prevOwnedNeitts, { neittTypeId: neittId, quantity: 1 }]; // Renamed slimeTypeId to neittTypeId
+    setOwnedNeitts(prevOwnedNeitts => {
+      const newNeittInstance: OwnedNeitt = {
+        instanceId: self.crypto.randomUUID(), //Requires isClient check or ensure only called client-side
+        neittTypeId: neittId,
+        lastProductionCycleStartTime: Date.now(),
+      };
+      return [...prevOwnedNeitts, newNeittInstance];
     });
-    toast({ title: `${neittToBuy.name} Purchased!`, description: `A new ${neittToBuy.name} has joined your farm!` }); // Renamed Slime to Neitt
+    toast({ title: `${neittToBuy.name} Purchased!`, description: `A new ${neittToBuy.name} has joined your farm!` });
   }, [currency, toast]);
+
+  const handleSellNit = useCallback((nitIdToSell: string, quantity: number) => {
+    const nitInfo = NITS_DATA.find(n => n.id === nitIdToSell);
+    if (!nitInfo) {
+        toast({ title: "Nit not found!", variant: "destructive" });
+        return;
+    }
+
+    const nitInInventory = producedNits.find(item => item.nitId === nitIdToSell);
+    if (!nitInInventory || nitInInventory.quantity < quantity) {
+      toast({ title: "Not enough Nits to sell!", variant: "destructive" });
+      return;
+    }
+    
+    // Nits don't have negotiation skills applied, direct sell price
+    const sellPrice = nitInfo.sellPrice;
+
+    setProducedNits(prevNits =>
+      prevNits
+        .map(item =>
+          item.nitId === nitIdToSell
+            ? { ...item, quantity: item.quantity - quantity }
+            : item
+        )
+        .filter(item => item.quantity > 0)
+    );
+
+    setCurrency(prevCurrency => prevCurrency + sellPrice * quantity);
+    toast({
+      title: `Sold ${quantity} ${nitInfo.name}(s)!`,
+      description: `You earned ${sellPrice * quantity} gold.`,
+    });
+  }, [producedNits, toast]);
+
 
   const saveGame = useCallback(() => {
     if (!isClient) return;
@@ -270,7 +354,8 @@ export default function HarvestClickerPage() {
         harvestedInventory,
         ownedSeeds,
         upgrades,
-        ownedNeitts, // Save owned neitts (renamed from ownedSlimes)
+        ownedNeitts, 
+        producedNits,
       };
       localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
       toast({
@@ -285,7 +370,7 @@ export default function HarvestClickerPage() {
         variant: "destructive",
       });
     }
-  }, [plots, currency, harvestedInventory, ownedSeeds, upgrades, ownedNeitts, toast, isClient]); // Renamed ownedSlimes to ownedNeitts
+  }, [plots, currency, harvestedInventory, ownedSeeds, upgrades, ownedNeitts, producedNits, toast, isClient]);
 
   const loadGame = useCallback(() => {
     if (!isClient) return;
@@ -331,7 +416,8 @@ export default function HarvestClickerPage() {
           setHarvestedInventory(gameState.harvestedInventory || []);
           setOwnedSeeds(gameState.ownedSeeds || []);
           setUpgrades(finalUpgrades);
-          setOwnedNeitts(gameState.ownedNeitts || []); // Load owned neitts (renamed from gameState.ownedSlimes)
+          setOwnedNeitts(gameState.ownedNeitts || []); 
+          setProducedNits(gameState.producedNits || []);
           setSelectedSeedFromOwnedId(undefined);
 
           toast({
@@ -349,7 +435,8 @@ export default function HarvestClickerPage() {
             setHarvestedInventory([]);
             setOwnedSeeds([]);
             setUpgrades(initialUpgradesState);
-            setOwnedNeitts([]); // Renamed from setOwnedSlimes
+            setOwnedNeitts([]);
+            setProducedNits([]);
             setSelectedSeedFromOwnedId(undefined);
         }
       } else {
@@ -370,7 +457,8 @@ export default function HarvestClickerPage() {
       setHarvestedInventory([]);
       setOwnedSeeds([]);
       setUpgrades(initialUpgradesState);
-      setOwnedNeitts([]); // Renamed from setOwnedSlimes
+      setOwnedNeitts([]);
+      setProducedNits([]);
       setSelectedSeedFromOwnedId(undefined);
     }
   }, [toast, isClient]);
@@ -388,7 +476,8 @@ export default function HarvestClickerPage() {
     setOwnedSeeds([]);
     setSelectedSeedFromOwnedId(undefined);
     setUpgrades(initialUpgradesState);
-    setOwnedNeitts([]); // Renamed from setOwnedSlimes
+    setOwnedNeitts([]);
+    setProducedNits([]);
   };
 
   const resetGame = () => {
@@ -398,7 +487,8 @@ export default function HarvestClickerPage() {
     setOwnedSeeds([]);
     setSelectedSeedFromOwnedId(undefined);
     setUpgrades(initialUpgradesState);
-    setOwnedNeitts([]); // Renamed from setOwnedSlimes
+    setOwnedNeitts([]);
+    setProducedNits([]);
     toast({
       title: "Game Reset",
       description: "Started a new farm! Your saved data (if any) is still preserved unless cleared manually.",
@@ -422,7 +512,7 @@ export default function HarvestClickerPage() {
         window.removeEventListener('beforeunload', handleBeforeUnload);
       };
     }
-  }, [isClient, saveGame, currency]);
+  }, [isClient, saveGame, currency]); // currency dependency for saveGame not strictly needed for auto-save on unload but kept from original
 
   useEffect(() => {
     if (isClient) {
@@ -496,11 +586,14 @@ export default function HarvestClickerPage() {
             purchasedUpgrades={upgrades}
             onBuyUpgrade={handleBuyUpgrade}
             getEffectiveCropSellPrice={getEffectiveCropSellPrice}
-
-            // Neitt Farm props
-            neittsData={NEITTS_DATA} // Renamed from slimesData
-            ownedNeitts={ownedNeitts} // Renamed from ownedSlimes
-            onBuyNeitt={handleBuyNeitt} // Renamed from onBuySlime
+            
+            neittsData={NEITTS_DATA}
+            ownedNeitts={ownedNeitts}
+            onBuyNeitt={handleBuyNeitt}
+            
+            producedNits={producedNits}
+            nitsData={NITS_DATA}
+            onSellNit={handleSellNit}
           />
         </div>
         <div className="pt-4 text-center space-y-2 sm:space-y-0 sm:space-x-2">
