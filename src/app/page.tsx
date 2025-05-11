@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -117,7 +116,6 @@ export default function HarvestClickerPage() {
     const seedInInventory = ownedSeeds.find(s => s.cropId === selectedSeedFromOwnedId);
     if (!seedInInventory || seedInInventory.quantity <= 0) {
         toast({ title: "Out of Seeds!", description: `You don't have any ${cropToPlant.name} seeds left.`, variant: "destructive" });
-        // setSelectedSeedFromOwnedId(undefined); // User wants to keep it selected
         return;
     }
 
@@ -133,14 +131,7 @@ export default function HarvestClickerPage() {
         const updatedSeeds = prevOwnedSeeds.map(s => 
             s.cropId === selectedSeedFromOwnedId ? {...s, quantity: s.quantity - 1} : s
         );
-        // User wants to keep seed selected even if quantity becomes 0
-        // const currentSelectedSeed = updatedSeeds.find(s => s.cropId === selectedSeedFromOwnedId);
-        // if (currentSelectedSeed && currentSelectedSeed.quantity <= 0) {
-        //      if (!updatedSeeds.some(s => s.cropId === selectedSeedFromOwnedId && s.quantity > 0)) {
-        //         setSelectedSeedFromOwnedId(undefined);
-        //     }
-        // }
-        return updatedSeeds.filter(s => s.quantity > 0 || s.cropId === selectedSeedFromOwnedId); // Keep selected seed even if 0
+        return updatedSeeds.filter(s => s.quantity > 0 || s.cropId === selectedSeedFromOwnedId); 
     });
 
     toast({
@@ -244,7 +235,6 @@ export default function HarvestClickerPage() {
         harvestedInventory,
         ownedSeeds,
         upgrades,
-        // selectedSeedFromOwnedId // Don't save transient UI state like selected seed
       };
       localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
       toast({
@@ -285,17 +275,17 @@ export default function HarvestClickerPage() {
             } else if (finalPlots.length > expectedExpandedPlotCount) {
               finalPlots = finalPlots.slice(0, expectedExpandedPlotCount);
             }
-          } else { // Not expanded
-            if (finalPlots.length > INITIAL_NUM_PLOTS) { // If saved with more plots but upgrade not bought (e.g. due to data manipulation or bug)
+          } else { 
+            if (finalPlots.length > INITIAL_NUM_PLOTS) { 
                finalPlots = generateInitialPlots(INITIAL_NUM_PLOTS);
-            } else if (finalPlots.length < INITIAL_NUM_PLOTS && finalPlots.length > 0) { // If save has fewer plots than initial, but not 0 (corrupt)
+            } else if (finalPlots.length < INITIAL_NUM_PLOTS && finalPlots.length > 0) { 
                const numToAdd = INITIAL_NUM_PLOTS - finalPlots.length;
                const newPlots = Array.from({ length: numToAdd }, (_, i) => ({
                 id: `plot-loaded-initialfill-${finalPlots.length + i + 1}`,
                 isHarvestable: false,
               }));
               finalPlots = [...finalPlots, ...newPlots];
-            } else if (finalPlots.length === 0) { // If no plots in save, reset to initial
+            } else if (finalPlots.length === 0) { 
               finalPlots = generateInitialPlots(INITIAL_NUM_PLOTS);
             }
           }
@@ -305,7 +295,7 @@ export default function HarvestClickerPage() {
           setHarvestedInventory(gameState.harvestedInventory || []);
           setOwnedSeeds(gameState.ownedSeeds || []);
           setUpgrades(finalUpgrades);
-          setSelectedSeedFromOwnedId(undefined); // Reset selected seed on load
+          setSelectedSeedFromOwnedId(undefined); 
 
           toast({
             title: "Game Loaded!",
@@ -317,7 +307,6 @@ export default function HarvestClickerPage() {
             description: "Could not load previous progress. Starting fresh.",
             variant: "destructive",
           });
-           // Reset to initial state if save data is malformed
             setPlots(generateInitialPlots(INITIAL_NUM_PLOTS));
             setCurrency(INITIAL_CURRENCY);
             setHarvestedInventory([]);
@@ -326,7 +315,6 @@ export default function HarvestClickerPage() {
             setSelectedSeedFromOwnedId(undefined);
         }
       } else {
-        // No save data found, start fresh (initial state is already set)
          toast({
             title: "Welcome Farmer!",
             description: "Starting a new game. Good luck!",
@@ -375,35 +363,37 @@ export default function HarvestClickerPage() {
     setIsClient(true);
   }, []);
 
+  // Effect for loading game on initial client mount
+  useEffect(() => {
+    if (isClient) {
+      loadGame();
+    }
+  }, [isClient, loadGame]); // loadGame is stable due to its useCallback deps (toast, isClient)
+
+  // Effect for autosave on beforeunload
   useEffect(() => {
     if (isClient) {
       const handleBeforeUnload = () => {
-        saveGame();
+        saveGame(); // saveGame will use the latest state due to its useCallback dependencies
       };
-
       window.addEventListener('beforeunload', handleBeforeUnload);
-      loadGame(); 
-
       return () => {
         window.removeEventListener('beforeunload', handleBeforeUnload);
       };
     }
-  }, [isClient, saveGame, loadGame]);
+  }, [isClient, saveGame]); // Re-attach listener if saveGame function (identity) changes
 
   useEffect(() => {
     if (isClient) {
-        // This effect ensures plot count consistency if 'expandFarm' upgrade status changes externally or due to bugs
         const expectedPlotCount = upgrades.expandFarm ? INITIAL_NUM_PLOTS + PLOT_EXPANSION_AMOUNT : INITIAL_NUM_PLOTS;
         if (plots.length !== expectedPlotCount) {
             const newPlots = Array.from({ length: expectedPlotCount }, (_, i) => {
                 const existingPlot = plots.find(p => p.id === `plot-${i + 1}`);
                 return existingPlot || { id: `plot-${i + 1}`, isHarvestable: false };
             });
-
-            // Ensure IDs are unique if regeneration is needed
             const uniqueNewPlots = newPlots.map((plot, index) => ({
                 ...plot,
-                id: `plot-${index + 1}` // Re-assign IDs to ensure consistency from plot-1 up to expectedPlotCount
+                id: `plot-${index + 1}` 
             }));
             setPlots(uniqueNewPlots);
         }
