@@ -2,9 +2,9 @@
 import type { FC } from 'react';
 import Image from 'next/image';
 import type { InventoryItem, Crop, UpgradeDefinition, UpgradesState, UpgradeId, NeittType, OwnedNeitt, Nit, OwnedNit } from '@/types';
-import { CROPS_DATA } from '@/config/crops';
-import { NEITTS_DATA } from '@/config/neitts'; 
-import { NITS_DATA } from '@/config/nits'; 
+import { CROPS_DATA } from '@/config/crops'; // Keep CROPS_DATA import
+// NEITTS_DATA is already passed as a prop (neittsData)
+// NITS_DATA is already passed as a prop (nitsData)
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,11 +30,13 @@ interface InventoryAndShopProps {
   neittsData: NeittType[];
   ownedNeitts: OwnedNeitt[]; 
   onBuyNeitt: (neittId: string) => void;
-  onFeedNeitt: (instanceId: string) => void; // New prop for feeding
+  onFeedNeitt: (instanceId: string) => void;
 
   producedNits: OwnedNit[];
   nitsData: Nit[];
   onSellNit: (nitId: string, quantity: number) => void;
+  
+  cropsData: Crop[]; // Added to get details of feed crops
 }
 
 const InventoryAndShop: FC<InventoryAndShopProps> = ({
@@ -51,13 +53,14 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   neittsData,
   ownedNeitts,
   onBuyNeitt,
-  onFeedNeitt, // New prop
+  onFeedNeitt,
   producedNits,
   nitsData,
   onSellNit,
+  cropsData, // Destructure new prop
 }) => {
-  const getCropById = (cropId: string): Crop | undefined => CROPS_DATA.find(c => c.id === cropId);
-  const getNitById = (nitId: string): Nit | undefined => NITS_DATA.find(n => n.id === nitId);
+  const getCropById = (cropId: string): Crop | undefined => cropsData.find(c => c.id === cropId); // Use passed cropsData
+  const getNitById = (nitId: string): Nit | undefined => nitsData.find(n => n.id === nitId);
 
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -320,10 +323,13 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                     {ownedNeitts.map(ownedNeittInstance => {
                       const neittDetails = neittsData.find(s => s.id === ownedNeittInstance.neittTypeId);
                       if (!neittDetails) return null;
+                      
                       const NeittIcon = neittDetails.icon;
+                      const requiredFeedCrop = cropsData.find(c => c.id === neittDetails.feedCropId);
+                      const playerHasFeedCrop = requiredFeedCrop ? harvestedInventory.some(item => item.cropId === requiredFeedCrop.id && item.quantity > 0) : false; // False if crop required but not found/no details
                       
                       let productionProgress = 0;
-                      let statusText = "Hungry. Feed me!";
+                      let statusText = "Hungry";
                       const currentNitInCycle = neittDetails.productionCapacity - ownedNeittInstance.nitsLeftToProduce + 1;
 
                       if (ownedNeittInstance.nitsLeftToProduce > 0) {
@@ -332,17 +338,41 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                         statusText = `Producing Nit ${currentNitInCycle}/${neittDetails.productionCapacity}`;
                       }
 
+                      let feedButtonText = "Feed";
+                      if (requiredFeedCrop && ownedNeittInstance.nitsLeftToProduce <= 0) {
+                          feedButtonText = `Feed (1 ${requiredFeedCrop.name})`;
+                      } else if (ownedNeittInstance.nitsLeftToProduce > 0) {
+                          feedButtonText = "Producing...";
+                      }
+
+                      const feedButtonDisabled = ownedNeittInstance.nitsLeftToProduce > 0 || (!!requiredFeedCrop && !playerHasFeedCrop);
+                      
+                      let buttonTitle = `Feed ${neittDetails.name}`;
+                      if(ownedNeittInstance.nitsLeftToProduce > 0) {
+                        buttonTitle = `${neittDetails.name} is producing`;
+                      } else if (requiredFeedCrop && !playerHasFeedCrop) {
+                        buttonTitle = `You need 1 ${requiredFeedCrop.name} to feed`;
+                      } else if (requiredFeedCrop) {
+                        buttonTitle = `Feed ${neittDetails.name} with 1 ${requiredFeedCrop.name}`;
+                      }
+
+
                       return (
                         <Card key={ownedNeittInstance.instanceId} className="flex flex-col items-center p-3 bg-secondary/40 shadow-sm rounded-lg hover:shadow-md transition-shadow">
-                          {neittDetails.imageUrl ? (
+                          {typeof neittDetails.imageUrl === 'string' ? (
+                             <Image src={neittDetails.imageUrl} alt={neittDetails.name} width={48} height={48} className="rounded-full mb-1 object-cover ring-2 ring-primary/50" data-ai-hint={neittDetails.dataAiHint} />
+                          ) : neittDetails.imageUrl ? ( // Assuming it's StaticImageData
                              <Image src={neittDetails.imageUrl} alt={neittDetails.name} width={48} height={48} className="rounded-full mb-1 object-cover ring-2 ring-primary/50" data-ai-hint={neittDetails.dataAiHint} />
                           ) : NeittIcon ? (
                             <NeittIcon className="w-12 h-12 mb-1" style={{ color: neittDetails.color || 'hsl(var(--primary))' }} />
                           ) : <NeittIconLucide className="w-12 h-12 mb-1 text-muted-foreground" />}
                           <p className="font-semibold text-sm text-center truncate w-full">{neittDetails.name}</p>
-                          <p className="text-xs text-muted-foreground text-center mt-0.5 h-8">
-                            {statusText}
-                          </p>
+                          <div className="text-xs text-muted-foreground text-center mt-0.5 h-10 flex flex-col justify-center"> {/* Increased height for two lines */}
+                            <span>{statusText}</span>
+                            {requiredFeedCrop && ownedNeittInstance.nitsLeftToProduce <= 0 && (
+                                <span className="block">Needs: 1 {requiredFeedCrop.name}</span>
+                            )}
+                          </div>
                           {ownedNeittInstance.nitsLeftToProduce > 0 && (
                              <Progress value={productionProgress} className="h-2 w-full mt-1 transition-all duration-100" />
                           )}
@@ -351,9 +381,10 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                             variant="outline" 
                             className="mt-2 text-xs h-7"
                             onClick={() => onFeedNeitt(ownedNeittInstance.instanceId)}
-                            disabled={ownedNeittInstance.nitsLeftToProduce > 0}
+                            disabled={feedButtonDisabled}
+                            title={buttonTitle}
                           >
-                            <Bone className="w-3 h-3 mr-1" /> Feed
+                            <Bone className="w-3 h-3 mr-1" /> {feedButtonText}
                           </Button>
                         </Card>
                       );
@@ -375,10 +406,13 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                   {neittsData.map(neitt => {
                     const NeittShopIcon = neitt.icon;
                     const canAfford = currency >= neitt.cost;
+                    const feedCropForShop = cropsData.find(c => c.id === neitt.feedCropId);
                     return (
                       <li key={neitt.id} className={`flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm hover:bg-secondary/50 transition-all ${!canAfford ? 'opacity-60' : ''}`}>
                         <div className="flex items-center space-x-3">
-                           {neitt.imageUrl ? (
+                           {typeof neitt.imageUrl === 'string' ? (
+                             <Image src={neitt.imageUrl} alt={neitt.name} width={40} height={40} className="rounded-md object-cover" data-ai-hint={neitt.dataAiHint}/>
+                           ) : neitt.imageUrl ? ( // Assuming StaticImageData
                              <Image src={neitt.imageUrl} alt={neitt.name} width={40} height={40} className="rounded-md object-cover" data-ai-hint={neitt.dataAiHint}/>
                           ) : NeittShopIcon ? (
                             <NeittShopIcon className="w-10 h-10" style={{ color: neitt.color || 'hsl(var(--primary))' }}/>
@@ -387,7 +421,8 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                             <p className="font-semibold">{neitt.name}</p>
                             <p className="text-xs text-muted-foreground max-w-xs truncate">{neitt.description}</p>
                              <p className="text-xs text-muted-foreground">Cost: <Coins className="inline w-3 h-3 mr-0.5" />{neitt.cost}</p>
-                             <p className="text-xs text-muted-foreground">Produces: {NITS_DATA.find(n=>n.id === neitt.producesNitId)?.name || 'Nit'} ({neitt.productionCapacity} per feed / {neitt.productionTime/1000}s each)</p>
+                             <p className="text-xs text-muted-foreground">Produces: {nitsData.find(n=>n.id === neitt.producesNitId)?.name || 'Nit'} ({neitt.productionCapacity} per feed / {neitt.productionTime/1000}s each)</p>
+                             {feedCropForShop && <p className="text-xs text-muted-foreground">Eats: {feedCropForShop.name}</p>}
                           </div>
                         </div>
                         <Button

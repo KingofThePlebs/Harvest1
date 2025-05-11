@@ -64,11 +64,12 @@ export interface NeittType {
   cost: number;
   icon: LucideIcon;
   color?: string; // Optional: for styling the icon or UI elements
-  imageUrl?: string; 
+  imageUrl?: string | StaticImageData; // Can be URL string or StaticImageData
   dataAiHint?: string;
   producesNitId: string; // ID of the Nit this Neitt produces
   productionTime: number; // Time in milliseconds to produce one Nit
   productionCapacity: number; // How many Nits it produces per feeding cycle (e.g., 5)
+  feedCropId: string; // ID of the crop this Neitt eats
 }
 
 export interface OwnedNeitt { // Represents an individual Neitt instance

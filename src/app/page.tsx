@@ -317,7 +317,7 @@ export default function HarvestClickerPage() {
       const newNeittInstance: OwnedNeitt = {
         instanceId: self.crypto.randomUUID(), 
         neittTypeId: neittId,
-        lastProductionCycleStartTime: Date.now(), // Or 0, to be set on first feed
+        lastProductionCycleStartTime: 0, // Will be set on first feed
         nitsLeftToProduce: 0, // Starts hungry
       };
       return [...prevOwnedNeitts, newNeittInstance];
@@ -343,13 +343,36 @@ export default function HarvestClickerPage() {
       }
 
       if (neittInstance.nitsLeftToProduce > 0) {
-        toast({ title: `${neittType.name} is already fed!`, description: "It's busy producing Nits." });
+        toast({ title: `${neittType.name} is already producing!`, description: "It's busy producing Nits." });
+        return prevOwnedNeitts;
+      }
+      
+      const requiredCrop = CROPS_DATA.find(c => c.id === neittType.feedCropId);
+      if (!requiredCrop) {
+          toast({ title: "Feeding Error", description: `Required feed crop (${neittType.feedCropId}) for ${neittType.name} not found.`, variant: "destructive" });
+          return prevOwnedNeitts;
+      }
+
+      const cropInInventory = harvestedInventory.find(item => item.cropId === neittType.feedCropId);
+      if (!cropInInventory || cropInInventory.quantity < 1) {
+        toast({ 
+            title: `Not Enough ${requiredCrop.name}s!`, 
+            description: `You need 1 ${requiredCrop.name} to feed ${neittType.name}.`, 
+            variant: "destructive" 
+        });
         return prevOwnedNeitts;
       }
 
-      // For now, feeding is free. Add currency check here if feeding costs something.
-      // Example: if (currency < FEED_COST) { toast(...); return prevOwnedNeitts; }
-      // setCurrency(prev => prev - FEED_COST);
+      // Consume the crop
+      setHarvestedInventory(prevInventory =>
+        prevInventory
+          .map(item =>
+            item.cropId === requiredCrop.id
+              ? { ...item, quantity: item.quantity - 1 }
+              : item
+          )
+          .filter(item => item.quantity > 0) // Remove if quantity becomes 0
+      );
 
       const updatedNeitts = [...prevOwnedNeitts];
       updatedNeitts[neittIndex] = {
@@ -358,10 +381,10 @@ export default function HarvestClickerPage() {
         lastProductionCycleStartTime: Date.now(),
       };
 
-      toast({ title: `Fed ${neittType.name}!`, description: `It will now produce ${neittType.productionCapacity} Nits.` });
+      toast({ title: `Fed ${neittType.name}!`, description: `Used 1 ${requiredCrop.name}. It will now produce ${neittType.productionCapacity} Nits.` });
       return updatedNeitts;
     });
-  }, [toast]);
+  }, [toast, harvestedInventory]);
 
 
   const handleSellNit = useCallback((nitIdToSell: string, quantity: number) => {
@@ -488,11 +511,15 @@ export default function HarvestClickerPage() {
               }
               
               const neittTypeDetails = NEITTS_DATA.find(nt => nt.id === neittTypeId);
+              if (!neittTypeDetails) { // Double check neittType exists after validation, good practice
+                 console.warn(`Skipping Neitt - type details not found for id ${neittTypeId} at index ${index}:`, neittFromFile);
+                 return;
+              }
 
               const instanceId = neittFromFile.instanceId || self.crypto.randomUUID();
               const lastProductionCycleStartTime = typeof neittFromFile.lastProductionCycleStartTime === 'number' 
                                                   ? neittFromFile.lastProductionCycleStartTime 
-                                                  : Date.now();
+                                                  : 0; // Default to 0 (not started) if undefined
               const nitsLeftToProduce = typeof neittFromFile.nitsLeftToProduce === 'number' 
                                         ? neittFromFile.nitsLeftToProduce
                                         : 0; // Default to hungry if undefined
@@ -669,11 +696,13 @@ export default function HarvestClickerPage() {
             neittsData={NEITTS_DATA}
             ownedNeitts={ownedNeitts}
             onBuyNeitt={handleBuyNeitt}
-            onFeedNeitt={handleFeedNeitt} // Pass down the new handler
+            onFeedNeitt={handleFeedNeitt} 
             
             producedNits={producedNits}
             nitsData={NITS_DATA}
             onSellNit={handleSellNit}
+            
+            cropsData={CROPS_DATA} // Pass CROPS_DATA for feed crop details
           />
         </div>
         <div className="pt-4 text-center space-y-2 sm:space-y-0 sm:space-x-2">
