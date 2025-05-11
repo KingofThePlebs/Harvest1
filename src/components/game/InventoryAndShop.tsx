@@ -67,7 +67,15 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                     >
                       <div className="flex items-center space-x-3">
                         {crop.seedShopImageUrl ? ( // Use seedShopImageUrl for My Seeds tab
-                          <Image src={crop.seedShopImageUrl} alt={crop.name} width={32} height={32} className="object-contain rounded-md" data-ai-hint={crop.dataAiHintSeedShop || crop.dataAiHint} />
+                          <Image 
+                            src={crop.seedShopImageUrl} 
+                            alt={crop.name} 
+                            width={32} 
+                            height={32} 
+                            className="object-contain rounded-md" 
+                            data-ai-hint={crop.dataAiHintSeedShop || crop.dataAiHint} 
+                            unoptimized // Added unoptimized prop
+                          />
                         ) : IconComponent ? (
                           <IconComponent className="w-8 h-8 text-green-600" />
                         ) : <Leaf className="w-8 h-8 text-gray-400" />}
@@ -115,7 +123,15 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                     <li key={item.cropId} className="flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm">
                       <div className="flex items-center space-x-3">
                         {crop.harvestedCropImageUrl ? ( // Use harvestedCropImageUrl for Sell Market tab
-                          <Image src={crop.harvestedCropImageUrl} alt={crop.name} width={32} height={32} className="object-contain rounded-md" data-ai-hint={crop.dataAiHintHarvestedCrop || crop.dataAiHint}/>
+                          <Image 
+                            src={crop.harvestedCropImageUrl} 
+                            alt={crop.name} 
+                            width={32} 
+                            height={32} 
+                            className="object-contain rounded-md" 
+                            data-ai-hint={crop.dataAiHintHarvestedCrop || crop.dataAiHint}
+                            unoptimized // Added unoptimized prop
+                          />
                         ) : IconComponent ? (
                           <IconComponent className="w-8 h-8 text-green-600" />
                         ) : <Leaf className="w-8 h-8 text-gray-400" />}

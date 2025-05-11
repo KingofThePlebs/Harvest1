@@ -291,3 +291,4 @@ export const CROPS_DATA: Crop[] = [
     dataAiHintFarmPlot: 'pumpkin plant',
   },
 ].sort((a, b) => a.seedPrice - b.seedPrice);
+
