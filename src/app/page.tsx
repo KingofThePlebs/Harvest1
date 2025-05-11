@@ -59,13 +59,13 @@ export default function HarvestClickerPage() {
 
     const productionInterval = setInterval(() => {
       const now = Date.now();
-      let hasNeittStateChanged = false;
-      const newlyProducedNitsMapForThisTick = new Map<string, number>();
+      let neittStateChangedDuringTick = false; // Renamed to avoid conflict
+      const newlyProducedNitsThisTick = new Map<string, number>();
 
       setOwnedNeitts(prevOwnedNeitts => {
         const nextOwnedNeitts = prevOwnedNeitts.map(neittInstance => {
           if (neittInstance.nitsLeftToProduce <= 0) {
-            return neittInstance; // Hungry, do nothing until fed
+            return neittInstance; // Hungry or cycle complete, do nothing until fed
           }
 
           const neittType = NEITTS_DATA.find(nt => nt.id === neittInstance.neittTypeId);
@@ -74,40 +74,39 @@ export default function HarvestClickerPage() {
           const elapsedTime = now - neittInstance.lastProductionCycleStartTime;
 
           if (elapsedTime >= neittType.productionTime) {
-            // Produce one Nit
-            const currentAmount = newlyProducedNitsMapForThisTick.get(neittType.producesNitId) || 0;
-            newlyProducedNitsMapForThisTick.set(neittType.producesNitId, currentAmount + 1);
+            // Produce one Nit for this instance
+            const currentAmount = newlyProducedNitsThisTick.get(neittType.producesNitId) || 0;
+            newlyProducedNitsThisTick.set(neittType.producesNitId, currentAmount + 1);
             
-            hasNeittStateChanged = true;
+            neittStateChangedDuringTick = true;
             const nitsNowLeft = neittInstance.nitsLeftToProduce - 1;
 
             return {
               ...neittInstance,
-              lastProductionCycleStartTime: nitsNowLeft > 0 ? now : neittInstance.lastProductionCycleStartTime, // Reset timer for next nit, or keep if cycle ends
+              lastProductionCycleStartTime: nitsNowLeft > 0 ? now : neittInstance.lastProductionCycleStartTime,
               nitsLeftToProduce: nitsNowLeft,
             };
           }
           return neittInstance;
         });
-
-        if (newlyProducedNitsMapForThisTick.size > 0) {
-          setProducedNits(currentGlobalProducedNits => {
-            const updatedGlobalNits = [...currentGlobalProducedNits];
-            newlyProducedNitsMapForThisTick.forEach((quantity, nitId) => {
-              const existingNitIndex = updatedGlobalNits.findIndex(n => n.nitId === nitId);
-              if (existingNitIndex > -1) {
-                updatedGlobalNits[existingNitIndex].quantity += quantity;
-              } else {
-                updatedGlobalNits.push({ nitId, quantity });
-              }
-            });
-            return updatedGlobalNits.filter(n => n.quantity > 0);
-          });
-        }
-        
-        return hasNeittStateChanged ? nextOwnedNeitts : prevOwnedNeitts;
+        // Only trigger a re-render if something actually changed in ownedNeitts
+        return neittStateChangedDuringTick ? nextOwnedNeitts : prevOwnedNeitts; 
       });
 
+      if (newlyProducedNitsThisTick.size > 0) {
+        setProducedNits(currentGlobalProducedNits => {
+          const updatedGlobalNits = [...currentGlobalProducedNits];
+          newlyProducedNitsThisTick.forEach((quantity, nitId) => {
+            const existingNitIndex = updatedGlobalNits.findIndex(n => n.nitId === nitId);
+            if (existingNitIndex > -1) {
+              updatedGlobalNits[existingNitIndex].quantity += quantity;
+            } else {
+              updatedGlobalNits.push({ nitId, quantity });
+            }
+          });
+          return updatedGlobalNits.filter(n => n.quantity > 0);
+        });
+      }
     }, 1000); // Check every second
 
     return () => clearInterval(productionInterval);
@@ -311,9 +310,9 @@ export default function HarvestClickerPage() {
       const newNeittInstance: OwnedNeitt = {
         instanceId: self.crypto.randomUUID(), 
         neittTypeId: neittId,
-        lastProductionCycleStartTime: 0, // Will be set on first feed
-        nitsLeftToProduce: 0, // Starts hungry
-        initialNitsForCycle: 0, // Starts with 0 nits for the cycle
+        lastProductionCycleStartTime: 0, 
+        nitsLeftToProduce: 0, 
+        initialNitsForCycle: 0, 
       };
       return [...prevOwnedNeitts, newNeittInstance];
     });
@@ -322,68 +321,68 @@ export default function HarvestClickerPage() {
 
 
   const handleFeedNeitt = useCallback((instanceId: string) => {
-    setOwnedNeitts(prevOwnedNeitts => {
-        const neittInstanceIndex = prevOwnedNeitts.findIndex(n => n.instanceId === instanceId);
-        if (neittInstanceIndex === -1) {
-            toast({ title: "Neitt not found!", variant: "destructive" });
-            return prevOwnedNeitts;
-        }
-        const neittInstance = prevOwnedNeitts[neittInstanceIndex];
-        const neittType = NEITTS_DATA.find(nt => nt.id === neittInstance.neittTypeId);
+    const neittInstance = ownedNeitts.find(n => n.instanceId === instanceId);
+    if (!neittInstance) {
+        toast({ title: "Neitt not found!", variant: "destructive" });
+        return;
+    }
 
-        if (!neittType) {
-            toast({ title: "Neitt type error!", variant: "destructive" });
-            return prevOwnedNeitts;
-        }
+    const neittType = NEITTS_DATA.find(nt => nt.id === neittInstance.neittTypeId);
+    if (!neittType) {
+        toast({ title: "Neitt type error!", variant: "destructive" });
+        return;
+    }
 
-        if (neittInstance.nitsLeftToProduce > 0) {
-            toast({ title: `${neittType.name} is already producing!`, description: "It's busy producing Nits." });
-            return prevOwnedNeitts;
-        }
-        
-        const requiredCrop = CROPS_DATA.find(c => c.id === neittType.feedCropId);
-        if (!requiredCrop) {
-            toast({ title: "Feeding Error", description: `Required feed crop (${neittType.feedCropId}) for ${neittType.name} not found.`, variant: "destructive" });
-            return prevOwnedNeitts;
-        }
+    if (neittInstance.nitsLeftToProduce > 0) {
+        toast({ title: `${neittType.name} is already producing!`, description: "It's busy producing Nits." });
+        return;
+    }
+    
+    const requiredCrop = CROPS_DATA.find(c => c.id === neittType.feedCropId);
+    if (!requiredCrop) {
+        toast({ title: "Feeding Error", description: `Required feed crop (${neittType.feedCropId}) for ${neittType.name} not found.`, variant: "destructive" });
+        return;
+    }
 
-        let canFeed = false;
-        let updatedHarvestedInventory = [...harvestedInventory];
+    const cropInInventory = harvestedInventory.find(item => item.cropId === neittType.feedCropId);
+    if (!cropInInventory || cropInInventory.quantity < 1) {
+      toast({ 
+          title: `Not Enough ${requiredCrop.name}s!`, 
+          description: `You need 1 ${requiredCrop.name} to feed ${neittType.name}.`, 
+          variant: "destructive" 
+      });
+      return;
+    }
+    
+    // All checks passed, proceed with state updates
+    setHarvestedInventory(prevInventory =>
+      prevInventory
+        .map(item =>
+          item.cropId === neittType.feedCropId
+            ? { ...item, quantity: item.quantity - 1 }
+            : item
+        )
+        .filter(item => item.quantity > 0)
+    );
+    
+    const nitsToProduceThisCycle = Math.floor(Math.random() * (neittType.maxProductionCapacity - neittType.minProductionCapacity + 1)) + neittType.minProductionCapacity;
 
-        const cropInInventoryIndex = updatedHarvestedInventory.findIndex(item => item.cropId === neittType.feedCropId);
-        if (cropInInventoryIndex > -1 && updatedHarvestedInventory[cropInInventoryIndex].quantity >= 1) {
-            updatedHarvestedInventory[cropInInventoryIndex] = {
-                ...updatedHarvestedInventory[cropInInventoryIndex],
-                quantity: updatedHarvestedInventory[cropInInventoryIndex].quantity - 1,
-            };
-            updatedHarvestedInventory = updatedHarvestedInventory.filter(item => item.quantity > 0);
-            setHarvestedInventory(updatedHarvestedInventory);
-            canFeed = true;
-        }
+    setOwnedNeitts(prevOwnedNeitts =>
+      prevOwnedNeitts.map(n =>
+        n.instanceId === instanceId
+          ? {
+              ...n,
+              nitsLeftToProduce: nitsToProduceThisCycle,
+              initialNitsForCycle: nitsToProduceThisCycle,
+              lastProductionCycleStartTime: Date.now(),
+            }
+          : n
+      )
+    );
+    
+    toast({ title: `Fed ${neittType.name}!`, description: `Used 1 ${requiredCrop.name}. It will now produce ${nitsToProduceThisCycle} Nit(s).` });
 
-        if (!canFeed) {
-          toast({ 
-              title: `Not Enough ${requiredCrop.name}s!`, 
-              description: `You need 1 ${requiredCrop.name} to feed ${neittType.name}.`, 
-              variant: "destructive" 
-          });
-          return prevOwnedNeitts;
-        }
-        
-        const nitsToProduceThisCycle = Math.floor(Math.random() * (neittType.maxProductionCapacity - neittType.minProductionCapacity + 1)) + neittType.minProductionCapacity;
-
-        const updatedNeitts = [...prevOwnedNeitts];
-        updatedNeitts[neittInstanceIndex] = {
-            ...neittInstance,
-            nitsLeftToProduce: nitsToProduceThisCycle,
-            initialNitsForCycle: nitsToProduceThisCycle,
-            lastProductionCycleStartTime: Date.now(),
-        };
-        
-        toast({ title: `Fed ${neittType.name}!`, description: `Used 1 ${requiredCrop.name}. It will now produce ${nitsToProduceThisCycle} Nit(s).` });
-        return updatedNeitts;
-    });
-  }, [harvestedInventory, toast]);
+  }, [ownedNeitts, harvestedInventory, toast]);
 
 
   const handleSellNit = useCallback((nitIdToSell: string, quantity: number) => {
@@ -430,7 +429,7 @@ export default function HarvestClickerPage() {
         upgrades,
         ownedNeitts, 
         producedNits,
-        selectedSeedFromOwnedId, // Save selected seed
+        selectedSeedFromOwnedId, 
       };
       localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
       toast({
@@ -475,12 +474,11 @@ export default function HarvestClickerPage() {
           let finalPlots = gameState.plots || [];
           const finalUpgrades = gameState.upgrades || initialUpgradesState;
           
-          // Plot count adjustment during load is now handled by the useEffect
-          setPlots(finalPlots); // Load plots as saved, useEffect will adjust
+          setPlots(finalPlots); 
           setCurrency(gameState.currency);
           setHarvestedInventory(gameState.harvestedInventory || []);
           setOwnedSeeds(gameState.ownedSeeds || []);
-          setUpgrades(finalUpgrades); // Set upgrades before plot adjustment useEffect might run
+          setUpgrades(finalUpgrades); 
           
           let loadedOwnedNeittsFromState: any[] = gameState.ownedNeitts || [];
           const processedNeitts: OwnedNeitt[] = [];
@@ -582,8 +580,7 @@ export default function HarvestClickerPage() {
     if (isClient) {
       loadGame();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClient]); // loadGame is intentionally not in deps to avoid re-loading on every render after initial load.
+  }, [isClient, loadGame]); 
 
   useEffect(() => {
     if (isClient) {
@@ -597,13 +594,11 @@ export default function HarvestClickerPage() {
     }
   }, [isClient, saveGame]); 
 
-  // This useEffect handles plot adjustments when 'expandFarm' upgrade changes or on initial load.
   useEffect(() => {
     if (isClient) {
         const expectedPlotCount = upgrades.expandFarm ? INITIAL_NUM_PLOTS + PLOT_EXPANSION_AMOUNT : INITIAL_NUM_PLOTS;
-        // Only run if plots actually need changing to prevent infinite loops if plots was a dep
         if (plots.length !== expectedPlotCount) { 
-            setPlots(currentPlots => { // Use updater form to ensure we use the latest plot state
+            setPlots(currentPlots => { 
                 let newPlotsArray = [...currentPlots];
                 if (newPlotsArray.length < expectedPlotCount) {
                     const numToAdd = expectedPlotCount - newPlotsArray.length;
@@ -612,11 +607,10 @@ export default function HarvestClickerPage() {
                         isHarvestable: false,
                     }));
                     newPlotsArray = [...newPlotsArray, ...newGeneratedPlots];
-                } else { // plots.length > expectedPlotCount
+                } else { 
                     newPlotsArray = newPlotsArray.slice(0, expectedPlotCount);
                 }
                 
-                // Re-ID plots to ensure consistent plot IDs like plot-1, plot-2, etc.
                 return newPlotsArray.map((plot, index) => ({
                     ...plot,
                     id: `plot-${index + 1}` 
@@ -624,8 +618,7 @@ export default function HarvestClickerPage() {
             });
         }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClient, upgrades.expandFarm]); // plots removed from dependency to avoid loop, using updater form of setPlots
+  }, [isClient, upgrades.expandFarm, plots.length]);
 
 
   if (!isClient) {
@@ -702,4 +695,3 @@ export default function HarvestClickerPage() {
     </div>
   );
 }
-
