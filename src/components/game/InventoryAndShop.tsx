@@ -3,15 +3,15 @@ import type { FC } from 'react';
 import Image from 'next/image';
 import type { InventoryItem, Crop, UpgradeDefinition, UpgradesState, UpgradeId, NeittType, OwnedNeitt, Nit, OwnedNit } from '@/types';
 import { CROPS_DATA } from '@/config/crops';
-import { NEITTS_DATA } from '@/config/neitts'; // Import NEITTS_DATA
-import { NITS_DATA } from '@/config/nits'; // Import NITS_DATA
+import { NEITTS_DATA } from '@/config/neitts'; 
+import { NITS_DATA } from '@/config/nits'; 
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem } from 'lucide-react';
+import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Progress } from '@/components/ui/progress'; // Import Progress component
+import { Progress } from '@/components/ui/progress'; 
 import { useState, useEffect } from 'react';
 
 
@@ -28,8 +28,9 @@ interface InventoryAndShopProps {
   getEffectiveCropSellPrice: (basePrice: number) => number;
 
   neittsData: NeittType[];
-  ownedNeitts: OwnedNeitt[]; // Now an array of instances
+  ownedNeitts: OwnedNeitt[]; 
   onBuyNeitt: (neittId: string) => void;
+  onFeedNeitt: (instanceId: string) => void; // New prop for feeding
 
   producedNits: OwnedNit[];
   nitsData: Nit[];
@@ -50,6 +51,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   neittsData,
   ownedNeitts,
   onBuyNeitt,
+  onFeedNeitt, // New prop
   producedNits,
   nitsData,
   onSellNit,
@@ -57,12 +59,11 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   const getCropById = (cropId: string): Crop | undefined => CROPS_DATA.find(c => c.id === cropId);
   const getNitById = (nitId: string): Nit | undefined => NITS_DATA.find(n => n.id === nitId);
 
-  // State to force re-render for progress bars
   const [, setTick] = useState(0);
   useEffect(() => {
     const interval = setInterval(() => {
       setTick(prevTick => prevTick + 1);
-    }, 500); // Refresh progress bars every 0.5 seconds
+    }, 500); 
     return () => clearInterval(interval);
   }, []);
 
@@ -311,18 +312,25 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
             <CardContent className="space-y-6 pt-4">
               <div>
                 <CardTitle className="text-xl text-primary-foreground/80 mb-2">Your Neitt Pen</CardTitle>
-                <CardDescription className="mb-4">Your Neitts automatically produce Nits over time.</CardDescription>
+                <CardDescription className="mb-4">Feed your Neitts to have them produce Nits over time.</CardDescription>
                 {ownedNeitts.length === 0 ? (
                   <p className="text-muted-foreground text-center py-4">Your neitt pen is empty. Buy some neitts from the shop below!</p>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 p-2 bg-background/50 rounded-md">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-2 bg-background/50 rounded-md">
                     {ownedNeitts.map(ownedNeittInstance => {
                       const neittDetails = neittsData.find(s => s.id === ownedNeittInstance.neittTypeId);
                       if (!neittDetails) return null;
                       const NeittIcon = neittDetails.icon;
                       
-                      const elapsedTime = Date.now() - ownedNeittInstance.lastProductionCycleStartTime;
-                      const productionProgress = Math.min(100, (elapsedTime / neittDetails.productionTime) * 100);
+                      let productionProgress = 0;
+                      let statusText = "Hungry. Feed me!";
+                      const currentNitInCycle = neittDetails.productionCapacity - ownedNeittInstance.nitsLeftToProduce + 1;
+
+                      if (ownedNeittInstance.nitsLeftToProduce > 0) {
+                        const elapsedTime = Date.now() - ownedNeittInstance.lastProductionCycleStartTime;
+                        productionProgress = Math.min(100, (elapsedTime / neittDetails.productionTime) * 100);
+                        statusText = `Producing Nit ${currentNitInCycle}/${neittDetails.productionCapacity}`;
+                      }
 
                       return (
                         <Card key={ownedNeittInstance.instanceId} className="flex flex-col items-center p-3 bg-secondary/40 shadow-sm rounded-lg hover:shadow-md transition-shadow">
@@ -332,12 +340,21 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                             <NeittIcon className="w-12 h-12 mb-1" style={{ color: neittDetails.color || 'hsl(var(--primary))' }} />
                           ) : <NeittIconLucide className="w-12 h-12 mb-1 text-muted-foreground" />}
                           <p className="font-semibold text-sm text-center truncate w-full">{neittDetails.name}</p>
-                          <div className="w-full px-2 mt-1">
-                             <Progress value={productionProgress} className="h-2 w-full transition-all duration-100" />
-                             <p className="text-xs text-muted-foreground text-center mt-0.5">
-                               Producing {NITS_DATA.find(n=>n.id === neittDetails.producesNitId)?.name || 'Nit'}...
-                             </p>
-                          </div>
+                          <p className="text-xs text-muted-foreground text-center mt-0.5 h-8">
+                            {statusText}
+                          </p>
+                          {ownedNeittInstance.nitsLeftToProduce > 0 && (
+                             <Progress value={productionProgress} className="h-2 w-full mt-1 transition-all duration-100" />
+                          )}
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="mt-2 text-xs h-7"
+                            onClick={() => onFeedNeitt(ownedNeittInstance.instanceId)}
+                            disabled={ownedNeittInstance.nitsLeftToProduce > 0}
+                          >
+                            <Bone className="w-3 h-3 mr-1" /> Feed
+                          </Button>
                         </Card>
                       );
                     })}
@@ -370,7 +387,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                             <p className="font-semibold">{neitt.name}</p>
                             <p className="text-xs text-muted-foreground max-w-xs truncate">{neitt.description}</p>
                              <p className="text-xs text-muted-foreground">Cost: <Coins className="inline w-3 h-3 mr-0.5" />{neitt.cost}</p>
-                             <p className="text-xs text-muted-foreground">Produces: {NITS_DATA.find(n=>n.id === neitt.producesNitId)?.name || 'Nit'} / {neitt.productionTime/1000}s</p>
+                             <p className="text-xs text-muted-foreground">Produces: {NITS_DATA.find(n=>n.id === neitt.producesNitId)?.name || 'Nit'} ({neitt.productionCapacity} per feed / {neitt.productionTime/1000}s each)</p>
                           </div>
                         </div>
                         <Button

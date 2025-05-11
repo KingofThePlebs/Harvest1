@@ -13,7 +13,8 @@ export const NEITTS_DATA: NeittType[] = [
     imageUrl: 'https://picsum.photos/seed/greenneitt/64/64',
     dataAiHint: 'green neitt',
     producesNitId: 'green_nit',
-    productionTime: 35 * 1000, // 35 seconds
+    productionTime: 35 * 1000, // 35 seconds per Nit
+    productionCapacity: 5, // Produces 5 Nits per feeding cycle
   },
   {
     id: 'blue_neitt',
@@ -25,7 +26,8 @@ export const NEITTS_DATA: NeittType[] = [
     imageUrl: 'https://picsum.photos/seed/blueneitt/64/64',
     dataAiHint: 'blue neitt',
     producesNitId: 'blue_nit',
-    productionTime: 45 * 1000, // 45 seconds
+    productionTime: 45 * 1000, // 45 seconds per Nit
+    productionCapacity: 5,
   },
   {
     id: 'red_neitt',
@@ -37,7 +39,8 @@ export const NEITTS_DATA: NeittType[] = [
     imageUrl: 'https://picsum.photos/seed/redneitt/64/64',
     dataAiHint: 'red neitt',
     producesNitId: 'red_nit',
-    productionTime: 55 * 1000, // 55 seconds
+    productionTime: 55 * 1000, // 55 seconds per Nit
+    productionCapacity: 5,
   },
   {
     id: 'purple_neitt',
@@ -49,7 +52,8 @@ export const NEITTS_DATA: NeittType[] = [
     imageUrl: 'https://picsum.photos/seed/purpleneitt/64/64',
     dataAiHint: 'purple neitt',
     producesNitId: 'purple_nit',
-    productionTime: 65 * 1000, // 65 seconds
+    productionTime: 65 * 1000, // 65 seconds per Nit
+    productionCapacity: 5,
   },
   {
     id: 'yellow_neitt',
@@ -61,6 +65,7 @@ export const NEITTS_DATA: NeittType[] = [
     imageUrl: 'https://picsum.photos/seed/yellowneitt/64/64',
     dataAiHint: 'yellow neitt',
     producesNitId: 'yellow_nit',
-    productionTime: 75 * 1000, // 75 seconds
+    productionTime: 75 * 1000, // 75 seconds per Nit
+    productionCapacity: 5,
   },
 ];
