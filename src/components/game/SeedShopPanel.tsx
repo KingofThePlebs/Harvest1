@@ -39,7 +39,6 @@ const SeedShopPanel: FC<SeedShopPanelProps> = ({ onBuySeed, currency, getEffecti
                     height={32} 
                     className="object-contain rounded-md flex-shrink-0"
                     data-ai-hint={crop.dataAiHintSeedShop || crop.dataAiHint}
-                    unoptimized // Added unoptimized prop
                   />
                 ) : IconComponent ? (
                   <IconComponent className="w-8 h-8 text-green-600 flex-shrink-0" />

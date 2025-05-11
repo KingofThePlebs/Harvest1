@@ -109,7 +109,6 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
                 height={48} 
                 className="object-contain rounded-md"
                 data-ai-hint={plantedCrop.dataAiHintFarmPlot || plantedCrop.dataAiHint}
-                unoptimized // Add if images are static and don't need Next.js optimization during dev or for many small images
               />
             ) : CropIconComponent ? (
               <CropIconComponent className="w-12 h-12 text-green-600" />

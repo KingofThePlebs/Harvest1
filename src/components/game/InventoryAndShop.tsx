@@ -74,7 +74,6 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                             height={32} 
                             className="object-contain rounded-md" 
                             data-ai-hint={crop.dataAiHintSeedShop || crop.dataAiHint} 
-                            unoptimized // Added unoptimized prop
                           />
                         ) : IconComponent ? (
                           <IconComponent className="w-8 h-8 text-green-600" />
@@ -130,7 +129,6 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                             height={32} 
                             className="object-contain rounded-md" 
                             data-ai-hint={crop.dataAiHintHarvestedCrop || crop.dataAiHint}
-                            unoptimized // Added unoptimized prop
                           />
                         ) : IconComponent ? (
                           <IconComponent className="w-8 h-8 text-green-600" />
