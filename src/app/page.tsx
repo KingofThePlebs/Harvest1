@@ -302,7 +302,7 @@ export default function HarvestClickerPage() {
     setCurrency(prev => prev - neittToBuy.cost);
     setOwnedNeitts(prevOwnedNeitts => {
       const newNeittInstance: OwnedNeitt = {
-        instanceId: self.crypto.randomUUID(), //Requires isClient check or ensure only called client-side
+        instanceId: self.crypto.randomUUID(), 
         neittTypeId: neittId,
         lastProductionCycleStartTime: Date.now(),
       };
@@ -324,7 +324,6 @@ export default function HarvestClickerPage() {
       return;
     }
     
-    // Nits don't have negotiation skills applied, direct sell price
     const sellPrice = nitInfo.sellPrice;
 
     setProducedNits(prevNits =>
@@ -416,7 +415,39 @@ export default function HarvestClickerPage() {
           setHarvestedInventory(gameState.harvestedInventory || []);
           setOwnedSeeds(gameState.ownedSeeds || []);
           setUpgrades(finalUpgrades);
-          setOwnedNeitts(gameState.ownedNeitts || []); 
+          
+          // Sanitize ownedNeitts data
+          let loadedOwnedNeittsFromState: any[] = gameState.ownedNeitts || [];
+          const processedNeitts: OwnedNeitt[] = [];
+          const validNeittTypeIds = new Set(NEITTS_DATA.map(nt => nt.id));
+
+          if (Array.isArray(loadedOwnedNeittsFromState)) {
+            loadedOwnedNeittsFromState.forEach((neittFromFile: any, index: number) => {
+              if (!neittFromFile || typeof neittFromFile !== 'object') {
+                console.warn(`Skipping invalid Neitt data at index ${index}: not an object`, neittFromFile);
+                return;
+              }
+
+              const neittTypeId = neittFromFile.neittTypeId;
+              if (!neittTypeId || typeof neittTypeId !== 'string' || !validNeittTypeIds.has(neittTypeId)) {
+                console.warn(`Skipping Neitt with invalid or missing neittTypeId at index ${index}:`, neittFromFile);
+                return; 
+              }
+
+              const instanceId = neittFromFile.instanceId || self.crypto.randomUUID();
+              const lastProductionCycleStartTime = typeof neittFromFile.lastProductionCycleStartTime === 'number' 
+                                                  ? neittFromFile.lastProductionCycleStartTime 
+                                                  : Date.now();
+              
+              processedNeitts.push({
+                instanceId: instanceId,
+                neittTypeId: neittTypeId,
+                lastProductionCycleStartTime: lastProductionCycleStartTime,
+              });
+            });
+          }
+          setOwnedNeitts(processedNeitts);
+          
           setProducedNits(gameState.producedNits || []);
           setSelectedSeedFromOwnedId(undefined);
 
@@ -500,7 +531,7 @@ export default function HarvestClickerPage() {
       loadGame();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClient]);
+  }, [isClient]); // loadGame is memoized and its dependencies are stable or handled by isClient
 
   useEffect(() => {
     if (isClient) {
@@ -512,7 +543,7 @@ export default function HarvestClickerPage() {
         window.removeEventListener('beforeunload', handleBeforeUnload);
       };
     }
-  }, [isClient, saveGame, currency]); // currency dependency for saveGame not strictly needed for auto-save on unload but kept from original
+  }, [isClient, saveGame]); 
 
   useEffect(() => {
     if (isClient) {
@@ -540,7 +571,7 @@ export default function HarvestClickerPage() {
         }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClient, upgrades.expandFarm]);
+  }, [isClient, upgrades.expandFarm]); // plots dependency removed as it caused re-runs; logic depends on upgrade state
 
 
   if (!isClient) {
@@ -614,3 +645,4 @@ export default function HarvestClickerPage() {
     </div>
   );
 }
+
