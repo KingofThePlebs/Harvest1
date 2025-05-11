@@ -2,9 +2,9 @@
 "use client";
 
 import type { FC } from 'react';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
-import type { Crop, PlotState } from '@/types';
+import type { PlotState } from '@/types';
 import { CROPS_DATA } from '@/config/crops';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -13,9 +13,9 @@ import { Leaf, Zap } from 'lucide-react';
 
 interface CropPlotProps {
   plot: PlotState;
-  onPlant: (plotId: string) => void; // Changed: no longer takes cropId
+  onPlant: (plotId: string) => void;
   onHarvest: (plotId: string, cropId: string) => void;
-  selectedSeedId?: string; // Renamed from selectedCropToPlantId
+  selectedSeedId?: string;
   getEffectiveCropGrowTime: (baseTime: number) => number;
 }
 
@@ -40,7 +40,8 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
     if (plantedCrop && plot.plantTime && !isReadyToHarvest) {
       const updateGrowth = () => {
         const elapsedTime = Date.now() - (plot.plantTime ?? 0);
-        const currentProgress = Math.min(100, (elapsedTime / effectiveGrowTime) * 100);
+        // Ensure effectiveGrowTime is not zero to prevent division by zero
+        const currentProgress = effectiveGrowTime > 0 ? Math.min(100, (elapsedTime / effectiveGrowTime) * 100) : 0;
         setProgress(currentProgress);
 
         if (currentProgress >= 100) {
@@ -51,7 +52,7 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
       
       updateGrowth(); 
       if (!isReadyToHarvest && effectiveGrowTime > 0) { 
-         intervalId = setInterval(updateGrowth, Math.min(100, effectiveGrowTime / 100)); // Update more frequently for short grow times
+         intervalId = setInterval(updateGrowth, Math.min(100, effectiveGrowTime / 100)); 
       }
 
     } else if (!plantedCrop) {
@@ -73,11 +74,11 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
       setIsReadyToHarvest(false); 
       setProgress(0);
     } else if (!plantedCrop && selectedSeedId) {
-      onPlant(plot.id); // Call onPlant with only plotId
+      onPlant(plot.id); 
     }
   };
   
-  const CropIcon = plantedCrop?.icon;
+  const CropIconComponent = plantedCrop?.icon;
 
   return (
     <Card className="w-full aspect-square flex flex-col items-center justify-center shadow-lg hover:shadow-xl transition-shadow duration-300 bg-background/70">
@@ -87,17 +88,17 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
       <CardContent className="flex-grow flex flex-col items-center justify-center p-2 w-full">
         {plantedCrop ? (
           <div className="flex flex-col items-center justify-center space-y-2 w-full">
-            {CropIcon ? (
-              <CropIcon className="w-12 h-12 text-green-600" />
-            ) : plantedCrop.imageUrl ? (
+            {plantedCrop.farmPlotImageUrl ? (
               <Image 
-                src={plantedCrop.imageUrl} 
+                src={plantedCrop.farmPlotImageUrl} 
                 alt={plantedCrop.name} 
                 width={48} 
                 height={48} 
                 className="object-contain rounded-md"
-                data-ai-hint={plantedCrop.dataAiHint}
+                data-ai-hint={plantedCrop.dataAiHintFarmPlot || plantedCrop.dataAiHint}
               />
+            ) : CropIconComponent ? (
+              <CropIconComponent className="w-12 h-12 text-green-600" />
             ) : <Leaf className="w-12 h-12 text-gray-400" /> }
             {!isReadyToHarvest && (
               <Progress value={progress} className="w-3/4 h-3 transition-all duration-100" />
@@ -127,5 +128,4 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
 };
 
 export default CropPlot;
-
     

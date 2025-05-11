@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { CROPS_DATA } from '@/config/crops';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Coins, ShoppingCart } from 'lucide-react';
+import { Coins, ShoppingCart, Leaf } from 'lucide-react';
 
 interface SeedShopPanelProps {
   onBuySeed: (cropId: string) => void;
@@ -31,18 +31,18 @@ const SeedShopPanel: FC<SeedShopPanelProps> = ({ onBuySeed, currency, getEffecti
               title={!canAfford ? `Not enough gold (need ${effectiveSeedPrice})` : `Buy ${crop.name} seed`}
             >
               <div className="flex items-center space-x-3 flex-grow">
-                {IconComponent ? (
-                  <IconComponent className="w-8 h-8 text-green-600 flex-shrink-0" />
-                ) : crop.imageUrl ? (
+                {crop.seedShopImageUrl ? (
                   <Image 
-                    src={crop.imageUrl} 
-                    alt={crop.name} 
+                    src={crop.seedShopImageUrl} 
+                    alt={`${crop.name} seed`}
                     width={32} 
                     height={32} 
                     className="object-contain rounded-md flex-shrink-0"
-                    data-ai-hint={crop.dataAiHint}
+                    data-ai-hint={crop.dataAiHintSeedShop || crop.dataAiHint}
                   />
-                ) : null}
+                ) : IconComponent ? (
+                  <IconComponent className="w-8 h-8 text-green-600 flex-shrink-0" />
+                ) : <Leaf className="w-8 h-8 text-gray-400 flex-shrink-0" /> }
                 <div className="flex-grow text-left">
                   <p className="font-semibold">{crop.name}</p>
                   <p className="text-xs text-muted-foreground">

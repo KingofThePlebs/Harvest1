@@ -6,7 +6,7 @@ import { CROPS_DATA } from '@/config/crops';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building } from 'lucide-react';
+import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf } from 'lucide-react';
 
 interface InventoryAndShopProps {
   harvestedInventory: InventoryItem[];
@@ -66,11 +66,11 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                                     ${isSelected ? 'ring-2 ring-primary-foreground ring-offset-2 ring-offset-primary' : ''}`}
                     >
                       <div className="flex items-center space-x-3">
-                        {IconComponent ? (
+                        {crop.inventoryImageUrl ? (
+                          <Image src={crop.inventoryImageUrl} alt={crop.name} width={32} height={32} className="object-contain rounded-md" data-ai-hint={crop.dataAiHintInventory || crop.dataAiHint} />
+                        ) : IconComponent ? (
                           <IconComponent className="w-8 h-8 text-green-600" />
-                        ) : crop.imageUrl ? (
-                          <Image src={crop.imageUrl} alt={crop.name} width={32} height={32} className="object-contain rounded-md" data-ai-hint={crop.dataAiHint} />
-                        ) : null}
+                        ) : <Leaf className="w-8 h-8 text-gray-400" />}
                         <div>
                           <p className="font-semibold">{crop.name}</p>
                           <p className="text-xs text-muted-foreground">Quantity: {item.quantity}</p>
@@ -114,11 +114,11 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                   return (
                     <li key={item.cropId} className="flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm">
                       <div className="flex items-center space-x-3">
-                        {IconComponent ? (
+                        {crop.inventoryImageUrl ? (
+                          <Image src={crop.inventoryImageUrl} alt={crop.name} width={32} height={32} className="object-contain rounded-md" data-ai-hint={crop.dataAiHintInventory || crop.dataAiHint}/>
+                        ) : IconComponent ? (
                           <IconComponent className="w-8 h-8 text-green-600" />
-                        ) : crop.imageUrl ? (
-                          <Image src={crop.imageUrl} alt={crop.name} width={32} height={32} className="object-contain rounded-md" data-ai-hint={crop.dataAiHint}/>
-                        ) : null}
+                        ) : <Leaf className="w-8 h-8 text-gray-400" />}
                         <div>
                           <p className="font-semibold">{crop.name} <span className="text-xs text-muted-foreground">(Qty: {item.quantity})</span></p>
                           <p className="text-xs text-muted-foreground">Sell Price: <Coins className="inline w-3 h-3 mr-0.5" />{effectiveSellPrice} each</p>

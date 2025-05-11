@@ -6,8 +6,20 @@ export interface Crop {
   growTime: number; // in milliseconds
   sellPrice: number;
   seedPrice: number; // Cost to buy the seed
-  icon?: LucideIcon;
-  imageUrl?: string;
+  icon?: LucideIcon; // For crops that use Lucide icons
+
+  // Specific images for different contexts
+  seedShopImageUrl?: string; // Image shown in the seed shop (e.g., seed packet)
+  inventoryImageUrl?: string; // Image shown in player's inventory (e.g., the harvested crop or seed icon)
+  farmPlotImageUrl?: string; // Image shown when planted on the farm (e.g., the growing plant)
+
+  // Corresponding AI hints for image generation
+  dataAiHintSeedShop?: string;
+  dataAiHintInventory?: string;
+  dataAiHintFarmPlot?: string;
+
+  // Fallback if specific images are not provided (less preferred now)
+  imageUrl?: string; 
   dataAiHint?: string; 
 }
 
