@@ -10,15 +10,12 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    // Remote patterns are no longer needed if all images are local.
-    // If you still have other remote images, you can keep their patterns here.
-    // For example:
-    // remotePatterns: [
-    //   {
-    //     protocol: 'https',
-    //     hostname: 'some-other-domain.com',
-    //   },
-    // ],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'picsum.photos',
+      },
+    ],
   },
 };
 
