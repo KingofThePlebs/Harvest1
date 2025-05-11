@@ -11,11 +11,12 @@ import SeedShopPanel from '@/components/game/SeedShopPanel';
 import InventoryAndShop from '@/components/game/InventoryAndShop';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
-import { RefreshCcw } from 'lucide-react';
+import { RefreshCcw, Save, Trash2 } from 'lucide-react'; // Added Save and Trash2
 
 const INITIAL_CURRENCY = 20;
 const INITIAL_NUM_PLOTS = 6;
 const PLOT_EXPANSION_AMOUNT = 3; 
+const SAVE_GAME_KEY = 'harvestClickerSaveData';
 
 const generateInitialPlots = (count: number): PlotState[] => {
   return Array.from({ length: count }, (_, i) => ({
@@ -39,6 +40,7 @@ export default function HarvestClickerPage() {
   const [selectedSeedFromOwnedId, setSelectedSeedFromOwnedId] = useState<string | undefined>(undefined);
   const [upgrades, setUpgrades] = useState<UpgradesState>(initialUpgradesState);
   const { toast } = useToast();
+  const [isClient, setIsClient] = useState(false);
 
   const getEffectiveCropSeedPrice = useCallback((basePrice: number) => {
     return upgrades.bulkDiscount ? Math.ceil(basePrice * 0.9) : basePrice;
@@ -115,7 +117,7 @@ export default function HarvestClickerPage() {
     const seedInInventory = ownedSeeds.find(s => s.cropId === selectedSeedFromOwnedId);
     if (!seedInInventory || seedInInventory.quantity <= 0) {
         toast({ title: "Out of Seeds!", description: `You don't have any ${cropToPlant.name} seeds left.`, variant: "destructive" });
-        setSelectedSeedFromOwnedId(undefined); // Keep this to deselect if out of seeds for the selected type
+        setSelectedSeedFromOwnedId(undefined); 
         return;
     }
 
@@ -129,21 +131,22 @@ export default function HarvestClickerPage() {
     
     setOwnedSeeds(prevOwnedSeeds => {
         const updatedSeeds = prevOwnedSeeds.map(s => 
-            s.cropId === selectedSeedFromOwnedId ? {...s, quantity: s.quantity -1} : s
+            s.cropId === selectedSeedFromOwnedId ? {...s, quantity: s.quantity - 1} : s
         );
         const currentSelectedSeed = updatedSeeds.find(s => s.cropId === selectedSeedFromOwnedId);
         if (currentSelectedSeed && currentSelectedSeed.quantity <= 0) {
-            setSelectedSeedFromOwnedId(undefined); // Deselect if this specific seed type runs out
+             // Keep seed selected if other seeds of this type exist, otherwise this will deselect if it was the last one.
+            if (!updatedSeeds.some(s => s.cropId === selectedSeedFromOwnedId && s.quantity > 0)) {
+                setSelectedSeedFromOwnedId(undefined);
+            }
         }
         return updatedSeeds.filter(s => s.quantity > 0);
     });
-
 
     toast({
       title: `${cropToPlant.name} planted!`,
       description: `One ${cropToPlant.name} seed used from inventory. Watch it grow.`,
     });
-    //setSelectedSeedFromOwnedId(undefined); // Removed this line to keep the seed selected
   }, [selectedSeedFromOwnedId, ownedSeeds, toast]);
 
 
@@ -232,6 +235,106 @@ export default function HarvestClickerPage() {
 
   }, [currency, upgrades, toast, plots]);
 
+  const saveGame = useCallback(() => {
+    if (!isClient) return;
+    try {
+      const gameState = {
+        plots,
+        currency,
+        harvestedInventory,
+        ownedSeeds,
+        upgrades,
+      };
+      localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
+      toast({
+        title: "Game Saved!",
+        description: "Your progress has been saved to this browser.",
+      });
+    } catch (error) {
+      console.error("Failed to save game:", error);
+      toast({
+        title: "Error Saving Game",
+        description: "Could not save your progress. See console for details.",
+        variant: "destructive",
+      });
+    }
+  }, [plots, currency, harvestedInventory, ownedSeeds, upgrades, toast, isClient]);
+
+  const loadGame = useCallback(() => {
+    if (!isClient) return;
+    try {
+      const savedData = localStorage.getItem(SAVE_GAME_KEY);
+      if (savedData) {
+        const gameState = JSON.parse(savedData);
+        if (gameState && typeof gameState.currency === 'number' && Array.isArray(gameState.plots)) {
+          
+          let finalPlots = gameState.plots || [];
+          const finalUpgrades = gameState.upgrades || initialUpgradesState;
+
+          if (finalUpgrades.expandFarm) {
+            const expectedExpandedPlotCount = INITIAL_NUM_PLOTS + PLOT_EXPANSION_AMOUNT;
+            if (finalPlots.length < expectedExpandedPlotCount) {
+              const numExistingPlots = finalPlots.length;
+              const numToAdd = expectedExpandedPlotCount - numExistingPlots;
+              const newPlots = Array.from({ length: numToAdd }, (_, i) => ({
+                id: `plot-loaded-expanded-${numExistingPlots + i + 1}`,
+                isHarvestable: false,
+              }));
+              finalPlots = [...finalPlots, ...newPlots];
+            } else if (finalPlots.length > expectedExpandedPlotCount) {
+              finalPlots = finalPlots.slice(0, expectedExpandedPlotCount);
+            }
+          } else { // Not expanded
+            if (finalPlots.length !== INITIAL_NUM_PLOTS) {
+              finalPlots = generateInitialPlots(INITIAL_NUM_PLOTS);
+            }
+          }
+          
+          setPlots(finalPlots);
+          setCurrency(gameState.currency);
+          setHarvestedInventory(gameState.harvestedInventory || []);
+          setOwnedSeeds(gameState.ownedSeeds || []);
+          setUpgrades(finalUpgrades);
+          setSelectedSeedFromOwnedId(undefined); // Reset selected seed on load
+
+          toast({
+            title: "Game Loaded!",
+            description: "Your previous progress has been restored.",
+          });
+        } else {
+           toast({
+            title: "Save Data Corrupted",
+            description: "Could not load previous progress. Starting fresh.",
+            variant: "destructive",
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load game:", error);
+      toast({
+        title: "Error Loading Game",
+        description: "Could not load your progress. Starting fresh.",
+        variant: "destructive",
+      });
+      setPlots(generateInitialPlots(INITIAL_NUM_PLOTS));
+      setCurrency(INITIAL_CURRENCY);
+      setHarvestedInventory([]);
+      setOwnedSeeds([]);
+      setUpgrades(initialUpgradesState);
+      setSelectedSeedFromOwnedId(undefined);
+    }
+  }, [toast, isClient]);
+
+
+  const clearSaveData = () => {
+    if (!isClient) return;
+    localStorage.removeItem(SAVE_GAME_KEY);
+    toast({
+      title: "Save Data Cleared",
+      description: "Your saved progress has been removed. Reset the game or refresh to start completely fresh.",
+    });
+  };
+  
   const resetGame = () => {
     setPlots(generateInitialPlots(INITIAL_NUM_PLOTS));
     setCurrency(INITIAL_CURRENCY);
@@ -241,23 +344,28 @@ export default function HarvestClickerPage() {
     setUpgrades(initialUpgradesState);
     toast({
       title: "Game Reset",
-      description: "Started a new farm!",
+      description: "Started a new farm! Your saved data (if any) is still preserved unless cleared manually.",
     });
   };
   
-  const [isClient, setIsClient] = useState(false);
   useEffect(() => {
     setIsClient(true);
   }, []);
 
   useEffect(() => {
-    // This effect ensures that if the 'expandFarm' upgrade is somehow reset (e.g. game reset logic error)
-    // and the number of plots is greater than the initial, it resets plots to initial count.
-    // It primarily handles edge cases or future game reset logic changes.
-    if (upgrades.expandFarm === false && plots.length > INITIAL_NUM_PLOTS) {
-        setPlots(generateInitialPlots(INITIAL_NUM_PLOTS));
+    if (isClient) {
+        loadGame();
     }
-  }, [upgrades.expandFarm, plots.length]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isClient]); // loadGame is stable
+
+  useEffect(() => {
+    if (isClient) {
+        if (upgrades.expandFarm === false && plots.length > INITIAL_NUM_PLOTS) {
+            setPlots(generateInitialPlots(INITIAL_NUM_PLOTS));
+        }
+    }
+  }, [isClient, upgrades.expandFarm, plots.length]);
 
 
   if (!isClient) {
@@ -300,9 +408,15 @@ export default function HarvestClickerPage() {
             getEffectiveCropSellPrice={getEffectiveCropSellPrice}
           />
         </div>
-        <div className="pt-4 text-center">
-            <Button onClick={resetGame} variant="outline" className="flex items-center gap-2 mx-auto">
+        <div className="pt-4 text-center space-y-2 sm:space-y-0 sm:space-x-2">
+            <Button onClick={saveGame} variant="outline" className="flex items-center gap-2 mx-auto sm:mx-0 sm:inline-flex">
+                <Save className="w-4 h-4" /> Save Game
+            </Button>
+            <Button onClick={resetGame} variant="outline" className="flex items-center gap-2 mx-auto sm:mx-0 sm:inline-flex">
                 <RefreshCcw className="w-4 h-4" /> Reset Game
+            </Button>
+            <Button onClick={clearSaveData} variant="destructive" className="flex items-center gap-2 mx-auto sm:mx-0 sm:inline-flex">
+                <Trash2 className="w-4 h-4" /> Clear Saved Data
             </Button>
         </div>
       </main>
@@ -312,3 +426,4 @@ export default function HarvestClickerPage() {
     </div>
   );
 }
+
