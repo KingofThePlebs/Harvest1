@@ -56,3 +56,10 @@ export interface UpgradeDefinition {
   cost: number;
   icon: LucideIcon;
 }
+
+export interface LeaderboardEntry {
+  id: string;
+  name: string;
+  score: number;
+  isCurrentUser?: boolean;
+}

@@ -1,7 +1,8 @@
+
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import type { PlotState, InventoryItem, Crop, UpgradesState, UpgradeId } from '@/types';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import type { PlotState, InventoryItem, Crop, UpgradesState, UpgradeId, LeaderboardEntry } from '@/types';
 import { CROPS_DATA } from '@/config/crops';
 import { UPGRADES_DATA } from '@/config/upgrades';
 import GameHeader from '@/components/game/GameHeader';
@@ -10,7 +11,7 @@ import SeedShopPanel from '@/components/game/SeedShopPanel';
 import InventoryAndShop from '@/components/game/InventoryAndShop';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
-import { RefreshCcw, Save, Trash2 } from 'lucide-react'; // Added Save and Trash2
+import { RefreshCcw, Save, Trash2 } from 'lucide-react'; 
 
 const INITIAL_CURRENCY = 20;
 const INITIAL_NUM_PLOTS = 6;
@@ -31,6 +32,13 @@ const initialUpgradesState: UpgradesState = {
   expandFarm: false,
 };
 
+const initialMockLeaderboard: LeaderboardEntry[] = [
+  { id: 'mock-farmer-1', name: "Old Rusty", score: 150, isCurrentUser: false },
+  { id: 'mock-farmer-2', name: "GreenThumb Gina", score: 320, isCurrentUser: false },
+  { id: 'mock-farmer-3', name: "Speedy Sam", score: 80, isCurrentUser: false },
+];
+
+
 export default function HarvestClickerPage() {
   const [plots, setPlots] = useState<PlotState[]>(() => generateInitialPlots(INITIAL_NUM_PLOTS));
   const [currency, setCurrency] = useState<number>(INITIAL_CURRENCY);
@@ -40,6 +48,34 @@ export default function HarvestClickerPage() {
   const [upgrades, setUpgrades] = useState<UpgradesState>(initialUpgradesState);
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
+
+  const [playerName, setPlayerName] = useState<string>("");
+  const [mockLeaderboardSeed, setMockLeaderboardSeed] = useState<LeaderboardEntry[]>(initialMockLeaderboard);
+
+  const leaderboardData = useMemo(() => {
+    const currentUserEntry: LeaderboardEntry = { 
+      id: 'current-user', 
+      name: playerName || "Anonymous Farmer", 
+      score: currency, 
+      isCurrentUser: true 
+    };
+
+    let combinedLeaderboard: LeaderboardEntry[];
+
+    if (playerName && playerName.trim() !== "") {
+      // Filter out any mock entry that might have the same name as the current player to avoid duplicates if player uses a mock name
+      const filteredMockData = mockLeaderboardSeed.filter(entry => entry.name.toLowerCase() !== playerName.toLowerCase());
+      combinedLeaderboard = [...filteredMockData, currentUserEntry];
+    } else {
+      // If player name is not set, just show mock data (current user won't be listed distinctly)
+      combinedLeaderboard = [...mockLeaderboardSeed];
+    }
+    
+    return combinedLeaderboard
+      .sort((a, b) => b.score - a.score)
+      .map((entry, index) => ({...entry, id: entry.isCurrentUser ? 'current-user' : `rank-${index}-${entry.name}`})); // Ensure unique keys for rendering
+  }, [playerName, currency, mockLeaderboardSeed]);
+
 
   const getEffectiveCropSeedPrice = useCallback((basePrice: number) => {
     return upgrades.bulkDiscount ? Math.ceil(basePrice * 0.9) : basePrice;
@@ -131,8 +167,9 @@ export default function HarvestClickerPage() {
         const updatedSeeds = prevOwnedSeeds.map(s => 
             s.cropId === selectedSeedFromOwnedId ? {...s, quantity: s.quantity - 1} : s
         );
-        return updatedSeeds.filter(s => s.quantity > 0 || s.cropId === selectedSeedFromOwnedId); 
+        return updatedSeeds.filter(s => s.quantity > 0); // Keep only seeds with quantity > 0
     });
+    
 
     toast({
       title: `${cropToPlant.name} planted!`,
@@ -235,6 +272,8 @@ export default function HarvestClickerPage() {
         harvestedInventory,
         ownedSeeds,
         upgrades,
+        playerName,
+        mockLeaderboardSeed, // Save mock seed data if it were editable, for now it's static but good practice if it changes
       };
       localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
       toast({
@@ -249,7 +288,7 @@ export default function HarvestClickerPage() {
         variant: "destructive",
       });
     }
-  }, [plots, currency, harvestedInventory, ownedSeeds, upgrades, toast, isClient]);
+  }, [plots, currency, harvestedInventory, ownedSeeds, upgrades, playerName, mockLeaderboardSeed, toast, isClient]);
 
   const loadGame = useCallback(() => {
     if (!isClient) return;
@@ -295,6 +334,8 @@ export default function HarvestClickerPage() {
           setHarvestedInventory(gameState.harvestedInventory || []);
           setOwnedSeeds(gameState.ownedSeeds || []);
           setUpgrades(finalUpgrades);
+          setPlayerName(gameState.playerName || "");
+          setMockLeaderboardSeed(gameState.mockLeaderboardSeed || initialMockLeaderboard);
           setSelectedSeedFromOwnedId(undefined); 
 
           toast({
@@ -312,6 +353,8 @@ export default function HarvestClickerPage() {
             setHarvestedInventory([]);
             setOwnedSeeds([]);
             setUpgrades(initialUpgradesState);
+            setPlayerName("");
+            setMockLeaderboardSeed(initialMockLeaderboard);
             setSelectedSeedFromOwnedId(undefined);
         }
       } else {
@@ -319,6 +362,8 @@ export default function HarvestClickerPage() {
             title: "Welcome Farmer!",
             description: "Starting a new game. Good luck!",
           });
+          setPlayerName(""); // Ensure player name is empty for new game
+          setMockLeaderboardSeed(initialMockLeaderboard); // Set initial mock leaderboard
       }
     } catch (error) {
       console.error("Failed to load game:", error);
@@ -332,6 +377,8 @@ export default function HarvestClickerPage() {
       setHarvestedInventory([]);
       setOwnedSeeds([]);
       setUpgrades(initialUpgradesState);
+      setPlayerName("");
+      setMockLeaderboardSeed(initialMockLeaderboard);
       setSelectedSeedFromOwnedId(undefined);
     }
   }, [toast, isClient]);
@@ -353,6 +400,9 @@ export default function HarvestClickerPage() {
     setOwnedSeeds([]);
     setSelectedSeedFromOwnedId(undefined);
     setUpgrades(initialUpgradesState);
+    setPlayerName(""); // Reset player name
+    setMockLeaderboardSeed(initialMockLeaderboard); // Reset leaderboard to initial mock
+
     toast({
       title: "Game Reset",
       description: "Started a new farm! Your saved data (if any) is still preserved unless cleared manually.",
@@ -368,37 +418,51 @@ export default function HarvestClickerPage() {
     if (isClient) {
       loadGame();
     }
-  }, [isClient, loadGame]); // loadGame is stable due to its useCallback deps (toast, isClient)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isClient]); // loadGame is stable due to its useCallback deps (toast, isClient)
 
   // Effect for autosave on beforeunload
   useEffect(() => {
     if (isClient) {
       const handleBeforeUnload = () => {
-        saveGame(); // saveGame will use the latest state due to its useCallback dependencies
+        saveGame(); 
       };
       window.addEventListener('beforeunload', handleBeforeUnload);
       return () => {
         window.removeEventListener('beforeunload', handleBeforeUnload);
       };
     }
-  }, [isClient, saveGame]); // Re-attach listener if saveGame function (identity) changes
+  }, [isClient, saveGame]); 
 
   useEffect(() => {
     if (isClient) {
         const expectedPlotCount = upgrades.expandFarm ? INITIAL_NUM_PLOTS + PLOT_EXPANSION_AMOUNT : INITIAL_NUM_PLOTS;
         if (plots.length !== expectedPlotCount) {
-            const newPlots = Array.from({ length: expectedPlotCount }, (_, i) => {
-                const existingPlot = plots.find(p => p.id === `plot-${i + 1}`);
-                return existingPlot || { id: `plot-${i + 1}`, isHarvestable: false };
-            });
-            const uniqueNewPlots = newPlots.map((plot, index) => ({
+            // Ensure plot IDs are unique and consistent, especially after loading/expanding
+            const basePlots = plots.slice(0, Math.min(plots.length, expectedPlotCount));
+            const newPlotsNeeded = expectedPlotCount - basePlots.length;
+            
+            let finalPlots = [...basePlots];
+            if (newPlotsNeeded > 0) {
+                const additionalPlots = Array.from({ length: newPlotsNeeded }, (_, i) => ({
+                    id: `plot-${basePlots.length + i + 1}`, // Ensure new plots get unique IDs
+                    isHarvestable: false,
+                }));
+                finalPlots = [...basePlots, ...additionalPlots];
+            } else if (newPlotsNeeded < 0) { // Too many plots
+                finalPlots = basePlots.slice(0, expectedPlotCount);
+            }
+            
+            // Re-ID all plots to ensure consistency from plot-1 to plot-N
+            const reIdPlots = finalPlots.map((plot, index) => ({
                 ...plot,
-                id: `plot-${index + 1}` 
+                id: `plot-${index + 1}`
             }));
-            setPlots(uniqueNewPlots);
+            setPlots(reIdPlots);
         }
     }
-  }, [isClient, upgrades.expandFarm, plots]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isClient, upgrades.expandFarm, plots.length]); // plots.length to re-evaluate if count changes externally.
 
 
   if (!isClient) {
@@ -443,6 +507,9 @@ export default function HarvestClickerPage() {
             purchasedUpgrades={upgrades}
             onBuyUpgrade={handleBuyUpgrade}
             getEffectiveCropSellPrice={getEffectiveCropSellPrice}
+            playerName={playerName}
+            onPlayerNameChange={setPlayerName}
+            leaderboardData={leaderboardData}
           />
         </div>
         <div className="pt-4 text-center space-y-2 sm:space-y-0 sm:space-x-2">

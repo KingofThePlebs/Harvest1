@@ -1,12 +1,14 @@
 
 import type { FC } from 'react';
 import Image from 'next/image';
-import type { InventoryItem, Crop, UpgradeDefinition, UpgradesState, UpgradeId } from '@/types';
+import type { InventoryItem, Crop, UpgradeDefinition, UpgradesState, UpgradeId, LeaderboardEntry } from '@/types';
 import { CROPS_DATA } from '@/config/crops';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Trophy } from 'lucide-react';
 
 interface InventoryAndShopProps {
   harvestedInventory: InventoryItem[];
@@ -19,6 +21,9 @@ interface InventoryAndShopProps {
   purchasedUpgrades: UpgradesState;
   onBuyUpgrade: (upgradeId: UpgradeId) => void;
   getEffectiveCropSellPrice: (basePrice: number) => number;
+  playerName: string;
+  onPlayerNameChange: (name: string) => void;
+  leaderboardData: LeaderboardEntry[];
 }
 
 const InventoryAndShop: FC<InventoryAndShopProps> = ({ 
@@ -31,7 +36,10 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   upgradesData, 
   purchasedUpgrades, 
   onBuyUpgrade,
-  getEffectiveCropSellPrice
+  getEffectiveCropSellPrice,
+  playerName,
+  onPlayerNameChange,
+  leaderboardData,
 }) => {
   const getCropById = (cropId: string): Crop | undefined => CROPS_DATA.find(c => c.id === cropId);
 
@@ -39,11 +47,12 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
     <Card className="shadow-lg">
       <Tabs defaultValue="mySeeds" className="w-full">
         <CardHeader className="pb-0">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5"> {/* Changed to 5 cols */}
             <TabsTrigger value="mySeeds" className="flex items-center gap-2"><Sprout className="w-4 h-4" />My Seeds</TabsTrigger>
             <TabsTrigger value="sellMarket" className="flex items-center gap-2"><Handshake className="w-4 h-4" />Sell Market</TabsTrigger>
             <TabsTrigger value="upgrades" className="flex items-center gap-2"><TrendingUp className="w-4 h-4" />Upgrades</TabsTrigger>
             <TabsTrigger value="town" className="flex items-center gap-2"><Building className="w-4 h-4" />Town</TabsTrigger>
+            <TabsTrigger value="leaderboard" className="flex items-center gap-2"><Trophy className="w-4 h-4" />Leaderboard</TabsTrigger>
           </TabsList>
         </CardHeader>
         
@@ -66,7 +75,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                                     ${isSelected ? 'ring-2 ring-primary-foreground ring-offset-2 ring-offset-primary' : ''}`}
                     >
                       <div className="flex items-center space-x-3">
-                        {crop.seedShopImageUrl ? ( // Use seedShopImageUrl for My Seeds tab
+                        {crop.seedShopImageUrl ? (
                           <Image 
                             src={crop.seedShopImageUrl} 
                             alt={crop.name} 
@@ -121,7 +130,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                   return (
                     <li key={item.cropId} className="flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm">
                       <div className="flex items-center space-x-3">
-                        {crop.harvestedCropImageUrl ? ( // Use harvestedCropImageUrl for Sell Market tab
+                        {crop.harvestedCropImageUrl ? ( 
                           <Image 
                             src={crop.harvestedCropImageUrl} 
                             alt={crop.name} 
@@ -224,6 +233,52 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                     </CardContent>
                 </Card>
             </div>
+          </CardContent>
+        </TabsContent>
+
+        <TabsContent value="leaderboard">
+          <CardContent className="space-y-4 pt-4 max-h-[60vh] overflow-y-auto">
+            <CardTitle className="text-xl text-primary-foreground/80">Leaderboard</CardTitle>
+            <CardDescription>See how you rank against other farmers! Your name is saved automatically.</CardDescription>
+            
+            <div className="space-y-2">
+              <Label htmlFor="playerName" className="text-sm font-medium">Your Name for Leaderboard</Label>
+              <Input
+                id="playerName"
+                type="text"
+                value={playerName}
+                onChange={(e) => onPlayerNameChange(e.target.value)}
+                placeholder="Enter your farmer name"
+                className="max-w-sm"
+              />
+            </div>
+
+            {leaderboardData.length === 0 && (!playerName || playerName.trim() === "") ? (
+              <p className="text-muted-foreground">Enter your name to appear on the leaderboard. Other farmers' scores will show up here too!</p>
+            ) : (
+              <ul className="space-y-2 pt-2">
+                {leaderboardData.map((entry, index) => (
+                  <li 
+                    key={entry.id} 
+                    className={`flex items-center justify-between p-3 rounded-md shadow-sm 
+                                ${entry.isCurrentUser ? 'bg-primary/20 ring-2 ring-primary' : 'bg-secondary/30'}`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <span className={`font-semibold w-6 text-center ${entry.isCurrentUser ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
+                        {index + 1}.
+                      </span>
+                      <span className={`font-medium ${entry.isCurrentUser ? 'text-primary-foreground' : ''}`}>
+                        {entry.name} {entry.isCurrentUser ? '(You)' : ''}
+                      </span>
+                    </div>
+                    <div className="flex items-center font-semibold">
+                      <Coins className="w-4 h-4 mr-1 text-primary" />
+                      {entry.score}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </TabsContent>
 
