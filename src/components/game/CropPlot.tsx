@@ -40,7 +40,6 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
     if (plantedCrop && plot.plantTime && !isReadyToHarvest) {
       const updateGrowth = () => {
         const elapsedTime = Date.now() - (plot.plantTime ?? 0);
-        // Ensure effectiveGrowTime is not zero to prevent division by zero
         const currentProgress = effectiveGrowTime > 0 ? Math.min(100, (elapsedTime / effectiveGrowTime) * 100) : 0;
         setProgress(currentProgress);
 
@@ -52,7 +51,9 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
       
       updateGrowth(); 
       if (!isReadyToHarvest && effectiveGrowTime > 0) { 
-         intervalId = setInterval(updateGrowth, Math.min(100, effectiveGrowTime / 100)); 
+         // Update more frequently for smoother animation if grow time is short
+         const updateInterval = Math.max(100, Math.min(effectiveGrowTime / 100, 500));
+         intervalId = setInterval(updateGrowth, updateInterval); 
       }
 
     } else if (!plantedCrop) {
@@ -61,7 +62,6 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
     } else if (isReadyToHarvest) {
       setProgress(100); 
     }
-
 
     return () => {
       if (intervalId) clearInterval(intervalId);
@@ -80,6 +80,19 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
   
   const CropIconComponent = plantedCrop?.icon;
 
+  const numStages = plantedCrop?.farmPlotImageUrls?.length ?? 0;
+  let currentStageImageUrl: string | undefined;
+
+  if (plantedCrop && numStages > 0) {
+    // Ensure progress is capped at 100 for stage calculation, especially if isReadyToHarvest is set early
+    const currentDisplayProgress = isReadyToHarvest ? 100 : progress;
+    let stageIndex = Math.floor(currentDisplayProgress / (100 / numStages));
+    stageIndex = Math.min(stageIndex, numStages - 1); // Ensure index is within bounds (0 to numStages-1)
+    stageIndex = Math.max(0, stageIndex); // Ensure index is not negative
+    currentStageImageUrl = plantedCrop.farmPlotImageUrls?.[stageIndex];
+  }
+
+
   return (
     <Card className="w-full aspect-square flex flex-col items-center justify-center shadow-lg hover:shadow-xl transition-shadow duration-300 bg-background/70">
       <CardHeader className="p-2 pt-4 text-center">
@@ -88,14 +101,15 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
       <CardContent className="flex-grow flex flex-col items-center justify-center p-2 w-full">
         {plantedCrop ? (
           <div className="flex flex-col items-center justify-center space-y-2 w-full">
-            {plantedCrop.farmPlotImageUrl ? (
+            {currentStageImageUrl ? (
               <Image 
-                src={plantedCrop.farmPlotImageUrl} 
+                src={currentStageImageUrl} 
                 alt={plantedCrop.name} 
                 width={48} 
                 height={48} 
                 className="object-contain rounded-md"
                 data-ai-hint={plantedCrop.dataAiHintFarmPlot || plantedCrop.dataAiHint}
+                unoptimized // Add if images are static and don't need Next.js optimization during dev or for many small images
               />
             ) : CropIconComponent ? (
               <CropIconComponent className="w-12 h-12 text-green-600" />

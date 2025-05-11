@@ -12,12 +12,12 @@ export interface Crop {
   // Specific images for different contexts
   seedShopImageUrl?: string; // Image shown in the seed shop AND in "My Seeds" inventory (e.g., seed packet)
   harvestedCropImageUrl?: string; // Image shown in sell market inventory (e.g., the harvested crop)
-  farmPlotImageUrl?: string; // Image shown when planted on the farm (e.g., the growing plant)
-
+  farmPlotImageUrls?: string[]; // Array of 5 image URLs for growth stages on the farm plot
+  
   // Corresponding AI hints for image generation
   dataAiHintSeedShop?: string; // For seed packet/bag
   dataAiHintHarvestedCrop?: string; // For harvested crop
-  dataAiHintFarmPlot?: string; // For growing plant
+  dataAiHintFarmPlot?: string; // General hint for the growing plant across stages
 
   // Fallback if specific images are not provided (less preferred now)
   imageUrl?: string; 
