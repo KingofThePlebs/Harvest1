@@ -2,10 +2,10 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import type { PlotState, InventoryItem, Crop, UpgradesState, UpgradeId, OwnedSlime } from '@/types';
+import type { PlotState, InventoryItem, Crop, UpgradesState, UpgradeId, OwnedNeitt } from '@/types'; // Changed OwnedSlime to OwnedNeitt
 import { CROPS_DATA } from '@/config/crops';
 import { UPGRADES_DATA } from '@/config/upgrades';
-import { SLIMES_DATA } from '@/config/slimes'; // Import slime data
+import { NEITTS_DATA } from '@/config/neitts'; // Changed SLIMES_DATA to NEITTS_DATA and path
 import GameHeader from '@/components/game/GameHeader';
 import PlantingArea from '@/components/game/PlantingArea';
 import SeedShopPanel from '@/components/game/SeedShopPanel';
@@ -13,14 +13,11 @@ import InventoryAndShop from '@/components/game/InventoryAndShop';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
 import { RefreshCcw, Save, Trash2, Loader2 } from 'lucide-react';
-// Leaderboard actions are removed
 
 const INITIAL_CURRENCY = 20;
 const INITIAL_NUM_PLOTS = 6;
 const PLOT_EXPANSION_AMOUNT = 3;
 const SAVE_GAME_KEY = 'harvestClickerSaveData';
-// Player ID and Name keys for leaderboard are removed as leaderboard is removed.
-
 
 const generateInitialPlots = (count: number): PlotState[] => {
   return Array.from({ length: count }, (_, i) => ({
@@ -46,31 +43,14 @@ export default function HarvestClickerPage() {
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
 
-  // Slime state
-  const [ownedSlimes, setOwnedSlimes] = useState<OwnedSlime[]>([]);
-
-  // Leaderboard state and refs removed
-  // const [localPlayerId, setLocalPlayerId] = useState<string | null>(null);
-  // const [playerName, setPlayerName] = useState<string>(""); 
-  // const [playerNameInput, setPlayerNameInput] = useState<string>("");
-  // const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  // const [isLeaderboardLoading, setIsLeaderboardLoading] = useState<boolean>(false);
-  // const [isSubmittingScore, setIsSubmittingScore] = useState<boolean>(false);
-  // const isSubmittingScoreRef = useRef(isSubmittingScore);
-
-  // useEffect(() => {
-  //   isSubmittingScoreRef.current = isSubmittingScore;
-  // }, [isSubmittingScore]);
-
+  // Neitt state
+  const [ownedNeitts, setOwnedNeitts] = useState<OwnedNeitt[]>([]); // Renamed from ownedSlimes, type to OwnedNeitt
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setIsClient(true);
-      // Logic for player ID and name from localStorage removed
     }
   }, []);
-
-  // Leaderboard related useEffects and functions (fetchLeaderboardData, handlePlayerNameInputChange, handleSubmitNameToLeaderboard, auto-submit score, processedLeaderboardData) are removed.
 
   const getEffectiveCropSeedPrice = useCallback((basePrice: number) => {
     return upgrades.bulkDiscount ? Math.ceil(basePrice * 0.9) : basePrice;
@@ -133,7 +113,7 @@ export default function HarvestClickerPage() {
       description: `Click on an empty plot to plant.`,
     });
   }, [ownedSeeds, toast]);
-  
+
 
   const handlePlantCrop = useCallback((plotId: string) => {
     if (!selectedSeedFromOwnedId) {
@@ -142,7 +122,7 @@ export default function HarvestClickerPage() {
     }
 
     const cropToPlant = CROPS_DATA.find(c => c.id === selectedSeedFromOwnedId);
-    if (!cropToPlant) return; 
+    if (!cropToPlant) return;
 
     const seedInInventory = ownedSeeds.find(s => s.cropId === selectedSeedFromOwnedId);
     if (!seedInInventory || seedInInventory.quantity <= 0) {
@@ -157,14 +137,14 @@ export default function HarvestClickerPage() {
           : p
       )
     );
-    
+
     setOwnedSeeds(prevOwnedSeeds => {
-        const updatedSeeds = prevOwnedSeeds.map(s => 
+        const updatedSeeds = prevOwnedSeeds.map(s =>
             s.cropId === selectedSeedFromOwnedId ? {...s, quantity: s.quantity - 1} : s
         );
-        return updatedSeeds.filter(s => s.quantity > 0); 
+        return updatedSeeds.filter(s => s.quantity > 0);
     });
-    
+
     toast({
       title: `${cropToPlant.name} planted!`,
       description: `One ${cropToPlant.name} seed used from inventory. Watch it grow.`,
@@ -225,7 +205,7 @@ export default function HarvestClickerPage() {
       description: `You earned ${effectiveSellPrice * quantity} gold.`,
     });
   }, [harvestedInventory, toast, getEffectiveCropSellPrice]);
-  
+
   const handleBuyUpgrade = useCallback((upgradeId: UpgradeId) => {
     const upgradeToBuy = UPGRADES_DATA.find(u => u.id === upgradeId);
     if (!upgradeToBuy) {
@@ -243,7 +223,7 @@ export default function HarvestClickerPage() {
 
     setCurrency(prevCurrency => prevCurrency - upgradeToBuy.cost);
     setUpgrades(prevUpgrades => ({ ...prevUpgrades, [upgradeId]: true }));
-    
+
     if (upgradeId === 'expandFarm') {
       const currentPlotsCount = plots.length;
       const newPlotsToAdd = Array.from({ length: PLOT_EXPANSION_AMOUNT }, (_, i) => ({
@@ -252,33 +232,33 @@ export default function HarvestClickerPage() {
       }));
       setPlots(prevPlots => [...prevPlots, ...newPlotsToAdd]);
     }
-    
+
     toast({ title: "Upgrade Purchased!", description: `You bought ${upgradeToBuy.name} for ${upgradeToBuy.cost} gold.` });
 
   }, [currency, upgrades, toast, plots]);
 
-  const handleBuySlime = useCallback((slimeId: string) => {
-    const slimeToBuy = SLIMES_DATA.find(s => s.id === slimeId);
-    if (!slimeToBuy) {
-      toast({ title: "Slime not found!", variant: "destructive" });
+  const handleBuyNeitt = useCallback((neittId: string) => { // Renamed from handleBuySlime, param to neittId
+    const neittToBuy = NEITTS_DATA.find(s => s.id === neittId); // Renamed slimeToBuy to neittToBuy, use NEITTS_DATA
+    if (!neittToBuy) {
+      toast({ title: "Neitt not found!", variant: "destructive" }); // Renamed Slime to Neitt
       return;
     }
-    if (currency < slimeToBuy.cost) {
-      toast({ title: "Not Enough Gold!", description: `You need ${slimeToBuy.cost} gold for a ${slimeToBuy.name}.`, variant: "destructive" });
+    if (currency < neittToBuy.cost) {
+      toast({ title: "Not Enough Gold!", description: `You need ${neittToBuy.cost} gold for a ${neittToBuy.name}.`, variant: "destructive" }); // Renamed Slime to Neitt
       return;
     }
 
-    setCurrency(prev => prev - slimeToBuy.cost);
-    setOwnedSlimes(prevOwnedSlimes => {
-      const existingSlimeIndex = prevOwnedSlimes.findIndex(item => item.slimeTypeId === slimeId);
-      if (existingSlimeIndex > -1) {
-        const updatedSlimes = [...prevOwnedSlimes];
-        updatedSlimes[existingSlimeIndex].quantity += 1;
-        return updatedSlimes;
+    setCurrency(prev => prev - neittToBuy.cost);
+    setOwnedNeitts(prevOwnedNeitts => { // Renamed setOwnedSlimes to setOwnedNeitts
+      const existingNeittIndex = prevOwnedNeitts.findIndex(item => item.neittTypeId === neittId); // Renamed slimeTypeId to neittTypeId
+      if (existingNeittIndex > -1) {
+        const updatedNeitts = [...prevOwnedNeitts]; // Renamed updatedSlimes to updatedNeitts
+        updatedNeitts[existingNeittIndex].quantity += 1;
+        return updatedNeitts;
       }
-      return [...prevOwnedSlimes, { slimeTypeId: slimeId, quantity: 1 }];
+      return [...prevOwnedNeitts, { neittTypeId: neittId, quantity: 1 }]; // Renamed slimeTypeId to neittTypeId
     });
-    toast({ title: `${slimeToBuy.name} Purchased!`, description: `A new ${slimeToBuy.name} has joined your farm!` });
+    toast({ title: `${neittToBuy.name} Purchased!`, description: `A new ${neittToBuy.name} has joined your farm!` }); // Renamed Slime to Neitt
   }, [currency, toast]);
 
   const saveGame = useCallback(() => {
@@ -290,8 +270,7 @@ export default function HarvestClickerPage() {
         harvestedInventory,
         ownedSeeds,
         upgrades,
-        ownedSlimes, // Save owned slimes
-        // playerName removed
+        ownedNeitts, // Save owned neitts (renamed from ownedSlimes)
       };
       localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
       toast({
@@ -306,7 +285,7 @@ export default function HarvestClickerPage() {
         variant: "destructive",
       });
     }
-  }, [plots, currency, harvestedInventory, ownedSeeds, upgrades, ownedSlimes, toast, isClient]); // playerName removed
+  }, [plots, currency, harvestedInventory, ownedSeeds, upgrades, ownedNeitts, toast, isClient]); // Renamed ownedSlimes to ownedNeitts
 
   const loadGame = useCallback(() => {
     if (!isClient) return;
@@ -315,7 +294,7 @@ export default function HarvestClickerPage() {
       if (savedData) {
         const gameState = JSON.parse(savedData);
         if (gameState && typeof gameState.currency === 'number' && Array.isArray(gameState.plots)) {
-          
+
           let finalPlots = gameState.plots || [];
           const finalUpgrades = gameState.upgrades || initialUpgradesState;
 
@@ -332,29 +311,28 @@ export default function HarvestClickerPage() {
             } else if (finalPlots.length > expectedExpandedPlotCount) {
               finalPlots = finalPlots.slice(0, expectedExpandedPlotCount);
             }
-          } else { 
-            if (finalPlots.length > INITIAL_NUM_PLOTS) { 
+          } else {
+            if (finalPlots.length > INITIAL_NUM_PLOTS) {
                finalPlots = generateInitialPlots(INITIAL_NUM_PLOTS);
-            } else if (finalPlots.length < INITIAL_NUM_PLOTS && finalPlots.length > 0) { 
+            } else if (finalPlots.length < INITIAL_NUM_PLOTS && finalPlots.length > 0) {
                const numToAdd = INITIAL_NUM_PLOTS - finalPlots.length;
                const newPlots = Array.from({ length: numToAdd }, (_, i) => ({
                 id: `plot-loaded-initialfill-${finalPlots.length + i + 1}`,
                 isHarvestable: false,
               }));
               finalPlots = [...finalPlots, ...newPlots];
-            } else if (finalPlots.length === 0) { 
+            } else if (finalPlots.length === 0) {
               finalPlots = generateInitialPlots(INITIAL_NUM_PLOTS);
             }
           }
-          
+
           setPlots(finalPlots);
           setCurrency(gameState.currency);
           setHarvestedInventory(gameState.harvestedInventory || []);
           setOwnedSeeds(gameState.ownedSeeds || []);
           setUpgrades(finalUpgrades);
-          setOwnedSlimes(gameState.ownedSlimes || []); // Load owned slimes
-          // Player name loading removed
-          setSelectedSeedFromOwnedId(undefined); 
+          setOwnedNeitts(gameState.ownedNeitts || []); // Load owned neitts (renamed from gameState.ownedSlimes)
+          setSelectedSeedFromOwnedId(undefined);
 
           toast({
             title: "Game Loaded!",
@@ -371,7 +349,7 @@ export default function HarvestClickerPage() {
             setHarvestedInventory([]);
             setOwnedSeeds([]);
             setUpgrades(initialUpgradesState);
-            setOwnedSlimes([]);
+            setOwnedNeitts([]); // Renamed from setOwnedSlimes
             setSelectedSeedFromOwnedId(undefined);
         }
       } else {
@@ -380,7 +358,6 @@ export default function HarvestClickerPage() {
             description: "Starting a new game. Good luck!",
           });
       }
-      // fetchLeaderboardData removed
     } catch (error) {
       console.error("Failed to load game:", error);
       toast({
@@ -393,16 +370,14 @@ export default function HarvestClickerPage() {
       setHarvestedInventory([]);
       setOwnedSeeds([]);
       setUpgrades(initialUpgradesState);
-      setOwnedSlimes([]);
+      setOwnedNeitts([]); // Renamed from setOwnedSlimes
       setSelectedSeedFromOwnedId(undefined);
-      // fetchLeaderboardData removed
     }
-  }, [toast, isClient]); // fetchLeaderboardData removed
+  }, [toast, isClient]);
 
   const clearSaveData = () => {
     if (!isClient) return;
     localStorage.removeItem(SAVE_GAME_KEY);
-    // localStorage.removeItem(PLAYER_NAME_KEY); // Removed
     toast({
       title: "Game Save Data Cleared",
       description: "Your saved game progress has been removed. Reset the game or refresh to start fresh.",
@@ -413,11 +388,9 @@ export default function HarvestClickerPage() {
     setOwnedSeeds([]);
     setSelectedSeedFromOwnedId(undefined);
     setUpgrades(initialUpgradesState);
-    setOwnedSlimes([]);
-    // Player name reset removed
-    // fetchLeaderboardData removed
+    setOwnedNeitts([]); // Renamed from setOwnedSlimes
   };
-  
+
   const resetGame = () => {
     setPlots(generateInitialPlots(INITIAL_NUM_PLOTS));
     setCurrency(INITIAL_CURRENCY);
@@ -425,33 +398,31 @@ export default function HarvestClickerPage() {
     setOwnedSeeds([]);
     setSelectedSeedFromOwnedId(undefined);
     setUpgrades(initialUpgradesState);
-    setOwnedSlimes([]);
+    setOwnedNeitts([]); // Renamed from setOwnedSlimes
     toast({
       title: "Game Reset",
       description: "Started a new farm! Your saved data (if any) is still preserved unless cleared manually.",
     });
-    // Leaderboard score submission on reset removed
   };
-  
+
   useEffect(() => {
     if (isClient) {
       loadGame();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClient]); 
+  }, [isClient]);
 
   useEffect(() => {
     if (isClient) {
       const handleBeforeUnload = () => {
         saveGame();
-        // Score submission on unload removed
       };
       window.addEventListener('beforeunload', handleBeforeUnload);
       return () => {
         window.removeEventListener('beforeunload', handleBeforeUnload);
       };
     }
-  }, [isClient, saveGame, currency]); // Removed leaderboard related dependencies
+  }, [isClient, saveGame, currency]);
 
   useEffect(() => {
     if (isClient) {
@@ -459,18 +430,18 @@ export default function HarvestClickerPage() {
         if (plots.length !== expectedPlotCount) {
             const basePlots = plots.slice(0, Math.min(plots.length, expectedPlotCount));
             const newPlotsNeeded = expectedPlotCount - basePlots.length;
-            
+
             let finalPlots = [...basePlots];
             if (newPlotsNeeded > 0) {
                 const additionalPlots = Array.from({ length: newPlotsNeeded }, (_, i) => ({
-                    id: `plot-autogen-${basePlots.length + i + 1}`, 
+                    id: `plot-autogen-${basePlots.length + i + 1}`,
                     isHarvestable: false,
                 }));
                 finalPlots = [...basePlots, ...additionalPlots];
-            } else if (newPlotsNeeded < 0) { 
+            } else if (newPlotsNeeded < 0) {
                 finalPlots = basePlots.slice(0, expectedPlotCount);
             }
-            
+
             const reIdPlots = finalPlots.map((plot, index) => ({
                 ...plot,
                 id: `plot-${index + 1}`
@@ -497,7 +468,7 @@ export default function HarvestClickerPage() {
       <main className="flex-grow container mx-auto p-4 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
-             <SeedShopPanel 
+             <SeedShopPanel
                 onBuySeed={handleBuySeed}
                 currency={currency}
                 getEffectiveCropSeedPrice={getEffectiveCropSeedPrice}
@@ -514,7 +485,7 @@ export default function HarvestClickerPage() {
           </div>
         </div>
         <div>
-          <InventoryAndShop 
+          <InventoryAndShop
             harvestedInventory={harvestedInventory}
             ownedSeeds={ownedSeeds}
             onSellCrop={handleSellCrop}
@@ -525,20 +496,11 @@ export default function HarvestClickerPage() {
             purchasedUpgrades={upgrades}
             onBuyUpgrade={handleBuyUpgrade}
             getEffectiveCropSellPrice={getEffectiveCropSellPrice}
-            
-            // Leaderboard props removed
-            // playerNameInput={playerNameInput}
-            // onPlayerNameInputChange={handlePlayerNameInputChange}
-            // onSubmitNameToLeaderboard={handleSubmitNameToLeaderboard}
-            // leaderboardData={processedLeaderboardData}
-            // isLeaderboardLoading={isLeaderboardLoading}
-            // isSubmittingScore={isSubmittingScore}
-            // confirmedPlayerName={playerName}
 
-            // Slime Farm props
-            slimesData={SLIMES_DATA}
-            ownedSlimes={ownedSlimes}
-            onBuySlime={handleBuySlime}
+            // Neitt Farm props
+            neittsData={NEITTS_DATA} // Renamed from slimesData
+            ownedNeitts={ownedNeitts} // Renamed from ownedSlimes
+            onBuyNeitt={handleBuyNeitt} // Renamed from onBuySlime
           />
         </div>
         <div className="pt-4 text-center space-y-2 sm:space-y-0 sm:space-x-2">

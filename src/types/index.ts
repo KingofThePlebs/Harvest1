@@ -11,18 +11,18 @@ export interface Crop {
   icon?: LucideIcon; // For crops that use Lucide icons as a fallback
 
   // Specific images for different contexts, now using StaticImageData
-  seedShopImageUrl?: StaticImageData; 
-  harvestedCropImageUrl?: StaticImageData; 
-  farmPlotImageUrls?: StaticImageData[]; 
-  
+  seedShopImageUrl?: StaticImageData;
+  harvestedCropImageUrl?: StaticImageData;
+  farmPlotImageUrls?: StaticImageData[];
+
   // Corresponding AI hints for image generation (if ever used with AI image gen)
-  dataAiHintSeedShop?: string; 
-  dataAiHintHarvestedCrop?: string; 
-  dataAiHintFarmPlot?: string; 
+  dataAiHintSeedShop?: string;
+  dataAiHintHarvestedCrop?: string;
+  dataAiHintFarmPlot?: string;
 
   // Fallback if specific images are not provided
   imageUrl?: StaticImageData; // Changed from string
-  dataAiHint?: string; 
+  dataAiHint?: string;
 }
 
 export interface PlotState {
@@ -57,7 +57,7 @@ export interface UpgradeDefinition {
   icon: LucideIcon;
 }
 
-export interface SlimeType {
+export interface NeittType {
   id: string;
   name: string;
   description: string;
@@ -68,7 +68,7 @@ export interface SlimeType {
   dataAiHint?: string;
 }
 
-export interface OwnedSlime {
-  slimeTypeId: string;
+export interface OwnedNeitt {
+  neittTypeId: string; // Renamed from slimeTypeId
   quantity: number;
 }
