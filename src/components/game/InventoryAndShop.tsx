@@ -1,19 +1,26 @@
-
 import type { FC } from 'react';
 import { useState } from 'react';
 import Image from 'next/image';
-import type { InventoryItem, Crop, UpgradeDefinition, UpgradesState, UpgradeId, NeittType, OwnedNeitt, Nit, OwnedNit } from '@/types';
+import type { InventoryItem, Crop, UpgradeDefinition, UpgradesState, UpgradeId, NeittType, OwnedNeitt, Nit, OwnedNit, Farm } from '@/types';
 import { CROPS_DATA } from '@/config/crops';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIcon, Star } from 'lucide-react';
+import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIcon, Star, ChevronDown } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { useIsMobile } from '@/hooks/use-mobile';
 import MobileNavSheet from './MobileNavSheet';
 import type { TabDefinition } from './MobileNavSheet';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 
 interface InventoryAndShopProps {
   harvestedInventory: InventoryItem[];
@@ -41,6 +48,10 @@ interface InventoryAndShopProps {
   farmLevel: number;
   farmXp: number;
   xpForNextLevel: number;
+
+  farms: Farm[]; // Add farms prop
+  currentFarmId: string; // Add currentFarmId prop
+  onFarmChange: (farmId: string) => void; // Add handler for farm change
 }
 
 const tabDefinitions: TabDefinition[] = [
@@ -74,14 +85,29 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   farmLevel,
   farmXp,
   xpForNextLevel,
+  farms,
+  currentFarmId,
+  onFarmChange,
 }) => {
   const getCropById = (cropId: string): Crop | undefined => cropsData.find(c => c.id === cropId);
   const getNitById = (nitId: string): Nit | undefined => nitsData.find(n => n.id === nitId);
 
-  const [activeTab, setActiveTab] = useState(tabDefinitions[0].id);
+  const [activeTab, setActiveTab] = useState(tabDefinitions[1].id); // Default to My Farm
   const isMobile = useIsMobile();
 
   const farmProgressPercent = xpForNextLevel > 0 ? (farmXp / xpForNextLevel) * 100 : 0;
+  const currentFarmName = farms.find(f => f.id === currentFarmId)?.name || "Farm";
+
+  const availableUpgrades = upgradesData.filter(upgrade => {
+    if (upgrade.isUnlocked) {
+      return upgrade.isUnlocked(purchasedUpgrades);
+    }
+    // If it's a farm unlock upgrade, check if it's already purchased
+    if (upgrade.id === 'unlockFarm2' && purchasedUpgrades.unlockFarm2) return false;
+    if (upgrade.id === 'unlockFarm3' && purchasedUpgrades.unlockFarm3) return false;
+    return true;
+  });
+
 
   return (
     <Card className="shadow-lg">
@@ -96,7 +122,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
           </div>
         ) : (
           <CardHeader className="pb-0 hidden md:block">
-            <TabsList className="grid w-full grid-cols-6"> {/* Adjusted to 6 columns */}
+            <TabsList className="grid w-full grid-cols-6">
               {tabDefinitions.map(tab => (
                 <TabsTrigger key={tab.id} value={tab.id} className="flex items-center gap-2">
                   <tab.icon className="w-4 h-4" />{tab.label}
@@ -165,10 +191,26 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
         <TabsContent value="myFarm">
           <ScrollArea className="h-[300px] sm:h-[400px] lg:max-h-[calc(60vh-100px)]">
             <CardContent className="space-y-4 pt-4">
-              <CardTitle className="text-xl text-primary-foreground/80 flex items-center gap-2">
-                <HomeIcon className="w-6 h-6"/>My Farm Overview
-              </CardTitle>
-              <CardDescription>Track your farm's progress and level.</CardDescription>
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-4">
+                <CardTitle className="text-xl text-primary-foreground/80 flex items-center gap-2">
+                  <HomeIcon className="w-6 h-6"/>My Farm Overview
+                </CardTitle>
+                {farms.length > 1 && (
+                  <Select value={currentFarmId} onValueChange={onFarmChange}>
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                      <SelectValue placeholder="Select Farm" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {farms.map(farm => (
+                        <SelectItem key={farm.id} value={farm.id}>
+                          {farm.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              <CardDescription>Currently viewing: <span className="font-semibold">{currentFarmName}</span>. Track your farm's progress and level.</CardDescription>
               
               <div className="space-y-3 p-4 bg-secondary/20 rounded-md shadow-sm">
                 <div className="flex items-center justify-between">
@@ -188,7 +230,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                   </div>
                   <Progress value={farmProgressPercent} className="w-full h-3" />
                   <p className="text-xs text-muted-foreground mt-1 text-center">
-                    {xpForNextLevel - farmXp} XP to next level
+                    {Math.max(0, xpForNextLevel - farmXp)} XP to next level
                   </p>
                 </div>
               </div>
@@ -316,9 +358,9 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                   <span>Your Gold: {currency}</span>
               </div>
               <ul className="space-y-3">
-                {upgradesData.map(upgrade => {
+                {availableUpgrades.map(upgrade => {
                   const UpgradeIcon = upgrade.icon;
-                  const isPurchased = purchasedUpgrades[upgrade.id];
+                  const isPurchased = purchasedUpgrades[upgrade.id]; // This check might be redundant if filtered by availableUpgrades
                   const canAfford = currency >= upgrade.cost;
                   return (
                     <li key={upgrade.id} className="flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm hover:bg-secondary/50">
@@ -329,7 +371,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                           <p className="text-xs text-muted-foreground">{upgrade.description}</p>
                         </div>
                       </div>
-                      {isPurchased ? (
+                      {isPurchased ? ( // Should not happen for farm unlocks if filtered correctly
                         <div className="flex items-center text-green-600 font-semibold">
                           <CheckCircle className="w-5 h-5 mr-1" /> Purchased
                         </div>
@@ -411,9 +453,8 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
 
                       if (ownedNeittInstance.nitsLeftToProduce > 0 && ownedNeittInstance.initialNitsForCycle > 0) {
                         const elapsedTime = Date.now() - ownedNeittInstance.lastProductionCycleStartTime;
-                        // Calculate progress for the current Nit being produced
                         const progressForCurrentNit = Math.min(100, (elapsedTime / neittDetails.productionTime) * 100);
-                        productionProgress = progressForCurrentNit; // Show progress for one Nit at a time
+                        productionProgress = progressForCurrentNit; 
 
                         const nitsProducedSoFar = ownedNeittInstance.initialNitsForCycle - ownedNeittInstance.nitsLeftToProduce;
                         statusText = `Producing Nit ${nitsProducedSoFar + 1}/${ownedNeittInstance.initialNitsForCycle}`;

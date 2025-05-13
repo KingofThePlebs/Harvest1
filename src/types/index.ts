@@ -1,4 +1,3 @@
-
 import type { StaticImageData } from 'next/image';
 import type { LucideIcon } from 'lucide-react';
 
@@ -22,15 +21,21 @@ export interface Crop {
   dataAiHintFarmPlot?: string;
 
   // Fallback if specific images are not provided
-  imageUrl?: StaticImageData; // Changed from string
+  imageUrl?: StaticImageData;
   dataAiHint?: string;
 }
 
 export interface PlotState {
-  id: string; // e.g. "plot-1", "plot-2"
+  id: string; // e.g. "plot-1", "plot-2" (unique within a farm)
   cropId?: string; // ID of the crop planted here
   plantTime?: number; // Timestamp when planted
   isHarvestable?: boolean; // Added for clarity, can be derived but useful for state
+}
+
+export interface Farm {
+  id: string; // e.g., "farm-1", "farm-2"
+  name: string; // e.g., "Farm 1", "Farm 2"
+  plots: PlotState[];
 }
 
 export interface InventoryItem {
@@ -43,7 +48,8 @@ export interface UpgradesState {
   fertilizer: boolean;
   negotiationSkills: boolean;
   bulkDiscount: boolean;
-  expandFarm: boolean; // New upgrade for more plots
+  unlockFarm2: boolean;
+  unlockFarm3: boolean;
 }
 
 // Defines the possible IDs for upgrades, derived from UpgradesState keys
@@ -56,6 +62,7 @@ export interface UpgradeDefinition {
   description: string;
   cost: number;
   icon: LucideIcon;
+  isUnlocked?: (upgrades: UpgradesState) => boolean; // Optional: to control visibility/availability
 }
 
 export interface NeittType {

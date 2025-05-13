@@ -1,4 +1,3 @@
-
 import type { FC } from 'react';
 import type { PlotState } from '@/types';
 import CropPlot from './CropPlot';
@@ -6,17 +5,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface PlantingAreaProps {
   plots: PlotState[];
-  onPlant: (plotId: string) => void; // Changed: no longer takes cropId
+  farmName: string; // Added to display current farm name
+  onPlant: (plotId: string) => void;
   onHarvest: (plotId: string, cropId: string) => void;
-  selectedSeedId?: string; // Renamed from selectedCropToPlantId
+  selectedSeedId?: string;
   getEffectiveCropGrowTime: (baseTime: number) => number;
 }
 
-const PlantingArea: FC<PlantingAreaProps> = ({ plots, onPlant, onHarvest, selectedSeedId, getEffectiveCropGrowTime }) => {
+const PlantingArea: FC<PlantingAreaProps> = ({ plots, farmName, onPlant, onHarvest, selectedSeedId, getEffectiveCropGrowTime }) => {
   return (
     <Card className="shadow-lg">
       <CardHeader>
-        <CardTitle className="text-center text-2xl text-primary-foreground/80">Your Farm</CardTitle>
+        <CardTitle className="text-center text-2xl text-primary-foreground/80">Your Farm - {farmName}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4 p-4 rounded-lg ">
@@ -24,9 +24,9 @@ const PlantingArea: FC<PlantingAreaProps> = ({ plots, onPlant, onHarvest, select
             <CropPlot
               key={plot.id}
               plot={plot}
-              onPlant={onPlant} // onPlant now only takes plotId
+              onPlant={onPlant}
               onHarvest={onHarvest}
-              selectedSeedId={selectedSeedId} // Pass renamed prop
+              selectedSeedId={selectedSeedId}
               getEffectiveCropGrowTime={getEffectiveCropGrowTime}
             />
           ))}
@@ -37,5 +37,3 @@ const PlantingArea: FC<PlantingAreaProps> = ({ plots, onPlant, onHarvest, select
 };
 
 export default PlantingArea;
-
-    

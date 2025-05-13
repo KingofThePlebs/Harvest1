@@ -1,5 +1,5 @@
 import type { UpgradeDefinition } from '@/types';
-import { Droplets, Award, Tag, LandPlot } from 'lucide-react';
+import { Droplets, Award, Tag, LandPlot, PlusSquare } from 'lucide-react';
 
 export const UPGRADES_DATA: UpgradeDefinition[] = [
   {
@@ -24,10 +24,19 @@ export const UPGRADES_DATA: UpgradeDefinition[] = [
     icon: Tag,
   },
   {
-    id: 'expandFarm',
-    name: 'Expand Farm',
-    description: 'Adds 3 more plots to your farm.',
-    cost: 20,
+    id: 'unlockFarm2',
+    name: 'Unlock Farm 2',
+    description: 'Unlocks a new farm area with 6 plots.',
+    cost: 500, // Example cost
     icon: LandPlot,
+    isUnlocked: (upgrades) => !upgrades.unlockFarm2, // Only show if not already purchased
+  },
+  {
+    id: 'unlockFarm3',
+    name: 'Unlock Farm 3',
+    description: 'Unlocks another new farm area with 6 plots.',
+    cost: 2000, // Example cost
+    icon: PlusSquare,
+    isUnlocked: (upgrades) => upgrades.unlockFarm2 && !upgrades.unlockFarm3, // Only show if Farm 2 is unlocked and Farm 3 is not
   },
 ];

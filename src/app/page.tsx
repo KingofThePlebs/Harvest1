@@ -1,8 +1,7 @@
-
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import type { PlotState, InventoryItem, Crop, UpgradesState, UpgradeId, OwnedNeitt, OwnedNit, Nit, NeittType } from '@/types';
+import type { PlotState, InventoryItem, Crop, UpgradesState, UpgradeId, OwnedNeitt, OwnedNit, Nit, NeittType, Farm } from '@/types';
 import { CROPS_DATA } from '@/config/crops';
 import { UPGRADES_DATA } from '@/config/upgrades';
 import { NEITTS_DATA } from '@/config/neitts';
@@ -13,19 +12,19 @@ import SeedShopPanel from '@/components/game/SeedShopPanel';
 import InventoryAndShop from '@/components/game/InventoryAndShop';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
-import { Save, Trash2, Loader2 } from 'lucide-react';
+import { Save, Loader2 } from 'lucide-react';
 
 const INITIAL_CURRENCY = 20;
 const INITIAL_NUM_PLOTS = 6;
-const PLOT_EXPANSION_AMOUNT = 3;
-const SAVE_GAME_KEY = 'harvestClickerSaveData';
+// const PLOT_EXPANSION_AMOUNT = 3; // No longer used directly this way
+const SAVE_GAME_KEY = 'harvestClickerSaveData_v2'; // Consider versioning save key if structure changes drastically
 
 const INITIAL_FARM_LEVEL = 1;
 const INITIAL_FARM_XP = 0;
 
-const generateInitialPlots = (count: number): PlotState[] => {
+const generateInitialPlots = (count: number, farmId: string): PlotState[] => {
   return Array.from({ length: count }, (_, i) => ({
-    id: `plot-${i + 1}`,
+    id: `${farmId}-plot-${i + 1}`, // Ensure plot IDs are unique across farms if needed, or just unique within a farm
     isHarvestable: false,
   }));
 };
@@ -34,11 +33,17 @@ const initialUpgradesState: UpgradesState = {
   fertilizer: false,
   negotiationSkills: false,
   bulkDiscount: false,
-  expandFarm: false,
+  unlockFarm2: false,
+  unlockFarm3: false,
 };
 
+const initialFarmsState: Farm[] = [
+  { id: 'farm-1', name: 'Farm 1', plots: generateInitialPlots(INITIAL_NUM_PLOTS, 'farm-1') }
+];
+
 export default function HarvestClickerPage() {
-  const [plots, setPlots] = useState<PlotState[]>(() => generateInitialPlots(INITIAL_NUM_PLOTS));
+  const [farms, setFarms] = useState<Farm[]>(initialFarmsState);
+  const [currentFarmId, setCurrentFarmId] = useState<string>('farm-1');
   const [currency, setCurrency] = useState<number>(INITIAL_CURRENCY);
   const [harvestedInventory, setHarvestedInventory] = useState<InventoryItem[]>([]);
   const [ownedSeeds, setOwnedSeeds] = useState<InventoryItem[]>([]);
@@ -60,7 +65,6 @@ export default function HarvestClickerPage() {
   }, []);
 
   const calculateXpToNextLevel = useCallback((level: number): number => {
-    // Example: Level 1 -> 50 XP, Level 2 -> 100 XP, Level 3 -> 150 XP
     return 50 + (level - 1) * 50;
   }, []);
 
@@ -200,11 +204,18 @@ export default function HarvestClickerPage() {
         return;
     }
 
-    setPlots(prevPlots =>
-      prevPlots.map(p =>
-        p.id === plotId
-          ? { ...p, cropId: selectedSeedFromOwnedId, plantTime: Date.now(), isHarvestable: false }
-          : p
+    setFarms(prevFarms =>
+      prevFarms.map(farm =>
+        farm.id === currentFarmId
+          ? {
+              ...farm,
+              plots: farm.plots.map(p =>
+                p.id === plotId
+                  ? { ...p, cropId: selectedSeedFromOwnedId, plantTime: Date.now(), isHarvestable: false }
+                  : p
+              ),
+            }
+          : farm
       )
     );
 
@@ -219,16 +230,23 @@ export default function HarvestClickerPage() {
       title: `${cropToPlant.name} planted!`,
       description: `One ${cropToPlant.name} seed used from inventory. Watch it grow.`,
     });
-  }, [selectedSeedFromOwnedId, ownedSeeds, toast]);
+  }, [selectedSeedFromOwnedId, ownedSeeds, toast, currentFarmId]);
 
 
   const handleHarvestCrop = useCallback((plotId: string, harvestedCropId: string) => {
     const crop = CROPS_DATA.find(c => c.id === harvestedCropId);
     if (!crop) return;
 
-    setPlots(prevPlots =>
-      prevPlots.map(p =>
-        p.id === plotId ? { ...p, cropId: undefined, plantTime: undefined, isHarvestable: false } : p
+    setFarms(prevFarms =>
+      prevFarms.map(farm =>
+        farm.id === currentFarmId
+          ? {
+              ...farm,
+              plots: farm.plots.map(p =>
+                p.id === plotId ? { ...p, cropId: undefined, plantTime: undefined, isHarvestable: false } : p
+              ),
+            }
+          : farm
       )
     );
 
@@ -246,7 +264,6 @@ export default function HarvestClickerPage() {
       description: "It's now in your sell market inventory.",
     });
 
-    // XP gain and leveling up
     const gainedXp = crop.xpYield || 0;
     if (gainedXp > 0) {
       setFarmXp(prevXp => {
@@ -264,11 +281,11 @@ export default function HarvestClickerPage() {
             variant: "default" 
           });
         }
-        setFarmLevel(currentLevel); // Update level directly here if it changed
+        setFarmLevel(currentLevel);
         return newXp;
       });
     }
-  }, [toast, farmLevel, farmXp, calculateXpToNextLevel]);
+  }, [toast, farmLevel, calculateXpToNextLevel, currentFarmId]);
 
   const handleSellCrop = useCallback((cropIdToSell: string, quantity: number) => {
     const crop = CROPS_DATA.find(c => c.id === cropIdToSell);
@@ -317,8 +334,21 @@ export default function HarvestClickerPage() {
     setCurrency(prevCurrency => prevCurrency - upgradeToBuy.cost);
     setUpgrades(prevUpgrades => ({ ...prevUpgrades, [upgradeId]: true }));
 
-    toast({ title: "Upgrade Purchased!", description: `You bought ${upgradeToBuy.name} for ${upgradeToBuy.cost} gold.` });
-
+    if (upgradeId === 'unlockFarm2') {
+      setFarms(prevFarms => [
+        ...prevFarms,
+        { id: 'farm-2', name: 'Farm 2', plots: generateInitialPlots(INITIAL_NUM_PLOTS, 'farm-2') }
+      ]);
+      toast({ title: "Farm 2 Unlocked!", description: `You bought ${upgradeToBuy.name} for ${upgradeToBuy.cost} gold.` });
+    } else if (upgradeId === 'unlockFarm3') {
+      setFarms(prevFarms => [
+        ...prevFarms,
+        { id: 'farm-3', name: 'Farm 3', plots: generateInitialPlots(INITIAL_NUM_PLOTS, 'farm-3') }
+      ]);
+      toast({ title: "Farm 3 Unlocked!", description: `You bought ${upgradeToBuy.name} for ${upgradeToBuy.cost} gold.` });
+    } else {
+      toast({ title: "Upgrade Purchased!", description: `You bought ${upgradeToBuy.name} for ${upgradeToBuy.cost} gold.` });
+    }
   }, [currency, upgrades, toast]);
 
   const handleBuyNeitt = useCallback((neittId: string) => {
@@ -448,7 +478,8 @@ export default function HarvestClickerPage() {
     if (!isClient) return;
     try {
       const gameState = {
-        plots,
+        farms, // Save array of farms
+        currentFarmId, // Save current farm ID
         currency,
         harvestedInventory,
         ownedSeeds,
@@ -472,10 +503,12 @@ export default function HarvestClickerPage() {
         variant: "destructive",
       });
     }
-  }, [plots, currency, harvestedInventory, ownedSeeds, upgrades, ownedNeitts, producedNits, selectedSeedFromOwnedId, farmLevel, farmXp, toast, isClient]);
+  }, [farms, currentFarmId, currency, harvestedInventory, ownedSeeds, upgrades, ownedNeitts, producedNits, selectedSeedFromOwnedId, farmLevel, farmXp, toast, isClient]);
 
   const resetGameStates = useCallback((showToast: boolean = true) => {
-    setPlots(generateInitialPlots(INITIAL_NUM_PLOTS));
+    const farm1Plots = generateInitialPlots(INITIAL_NUM_PLOTS, 'farm-1');
+    setFarms([{ id: 'farm-1', name: 'Farm 1', plots: farm1Plots }]);
+    setCurrentFarmId('farm-1');
     setCurrency(INITIAL_CURRENCY);
     setHarvestedInventory([]);
     setOwnedSeeds([]);
@@ -499,16 +532,52 @@ export default function HarvestClickerPage() {
       const savedData = localStorage.getItem(SAVE_GAME_KEY);
       if (savedData) {
         const gameState = JSON.parse(savedData);
-        if (gameState && typeof gameState.currency === 'number' && Array.isArray(gameState.plots)) {
-
-          let finalPlots = gameState.plots || [];
-          const finalUpgrades = gameState.upgrades || initialUpgradesState;
+        if (gameState && typeof gameState.currency === 'number') { // Basic check
           
-          setPlots(finalPlots); 
+          // Load farms or initialize if old save format
+          if (Array.isArray(gameState.farms) && gameState.farms.length > 0) {
+            // Ensure plots within each farm are valid
+            const loadedFarms = gameState.farms.map((farm: Farm) => ({
+              ...farm,
+              plots: Array.isArray(farm.plots) ? farm.plots.map((p: any, idx: number) => ({ // Add type safety for p
+                  id: p.id || `${farm.id}-plot-${idx + 1}`, // Ensure ID exists
+                  cropId: p.cropId,
+                  plantTime: p.plantTime,
+                  isHarvestable: p.isHarvestable || false,
+              })) : generateInitialPlots(INITIAL_NUM_PLOTS, farm.id)
+            }));
+            setFarms(loadedFarms);
+          } else if (Array.isArray(gameState.plots)) { // Handle old save format
+            const migratedFarm1Plots = gameState.plots.map((p: any, idx: number) => ({
+                id: p.id || `farm-1-plot-${idx+1}`,
+                cropId: p.cropId,
+                plantTime: p.plantTime,
+                isHarvestable: p.isHarvestable || false,
+            }));
+            const migratedFarms: Farm[] = [{ id: 'farm-1', name: 'Farm 1', plots: migratedFarm1Plots }];
+            // Check old 'expandFarm' upgrade to potentially add Farm 2 for migration
+            if (gameState.upgrades?.expandFarm && !gameState.upgrades?.unlockFarm2) {
+              migratedFarms.push({ id: 'farm-2', name: 'Farm 2', plots: generateInitialPlots(INITIAL_NUM_PLOTS, 'farm-2')});
+              // Optionally update the new upgrade state in gameState.upgrades if you want to persist it
+              if(gameState.upgrades) gameState.upgrades.unlockFarm2 = true;
+            }
+            setFarms(migratedFarms);
+          } else {
+            setFarms(initialFarmsState); // Default to initial farms if nothing found
+          }
+
+          setCurrentFarmId(gameState.currentFarmId || (farms.length > 0 ? farms[0].id : 'farm-1'));
           setCurrency(gameState.currency);
           setHarvestedInventory(gameState.harvestedInventory || []);
           setOwnedSeeds(gameState.ownedSeeds || []);
-          setUpgrades(finalUpgrades); 
+          
+          const loadedUpgrades = {...initialUpgradesState, ...gameState.upgrades};
+          // Remove expandFarm if it exists from old save, as it's replaced
+          if ('expandFarm' in loadedUpgrades) {
+            delete (loadedUpgrades as any).expandFarm;
+          }
+          setUpgrades(loadedUpgrades);
+
           setFarmLevel(gameState.farmLevel || INITIAL_FARM_LEVEL);
           setFarmXp(gameState.farmXp || INITIAL_FARM_XP);
           
@@ -590,26 +659,14 @@ export default function HarvestClickerPage() {
       });
       resetGameStates(false); 
     }
-  }, [toast, isClient, resetGameStates]);
-
-
-  const clearSaveData = () => {
-    if (!isClient) return;
-    localStorage.removeItem(SAVE_GAME_KEY);
-    resetGameStates(false); 
-    toast({
-      title: "Game Save Data Cleared",
-      description: "Your saved game progress has been removed. The game has been reset.",
-    });
-  };
-  
+  }, [toast, isClient, resetGameStates, farms]); // Added farms to dependency for initial setCurrentFarmId
 
   useEffect(() => {
     if (isClient) {
       loadGame();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClient]); // loadGame is memoized, but to be safe, only run on client mount
+  }, [isClient]);
 
   useEffect(() => {
     if (isClient) {
@@ -623,31 +680,13 @@ export default function HarvestClickerPage() {
     }
   }, [isClient, saveGame]); 
 
-  useEffect(() => {
-    if (isClient) {
-        const expectedPlotCount = upgrades.expandFarm ? INITIAL_NUM_PLOTS + PLOT_EXPANSION_AMOUNT : INITIAL_NUM_PLOTS;
-        if (plots.length !== expectedPlotCount) { 
-            setPlots(currentPlots => { 
-                let newPlotsArray = [...currentPlots];
-                if (newPlotsArray.length < expectedPlotCount) {
-                    const numToAdd = expectedPlotCount - newPlotsArray.length;
-                    const newGeneratedPlots = Array.from({ length: numToAdd }, (_, i) => ({
-                        id: `plot-autogen-${newPlotsArray.length + i + 1}`,
-                        isHarvestable: false,
-                    }));
-                    newPlotsArray = [...newPlotsArray, ...newGeneratedPlots];
-                } else { 
-                    newPlotsArray = newPlotsArray.slice(0, expectedPlotCount);
-                }
-                
-                return newPlotsArray.map((plot, index) => ({
-                    ...plot,
-                    id: `plot-${index + 1}` 
-                }));
-            });
-        }
-    }
-  }, [isClient, upgrades.expandFarm, plots.length]);
+  // This useEffect for plot expansion is no longer needed as farm expansion is handled by specific upgrades.
+  // useEffect(() => {
+  //   if (isClient) {
+  //       const expectedPlotCount = upgrades.expandFarm ? INITIAL_NUM_PLOTS + PLOT_EXPANSION_AMOUNT : INITIAL_NUM_PLOTS;
+  //       // ... logic to adjust plot count for the current farm ...
+  //   }
+  // }, [isClient, upgrades.expandFarm, plots.length]); // This needs to be removed or rethought
 
 
   if (!isClient) {
@@ -660,6 +699,9 @@ export default function HarvestClickerPage() {
   }
 
   const xpForNextLevel = calculateXpToNextLevel(farmLevel);
+  const currentFarm = farms.find(f => f.id === currentFarmId);
+  const currentFarmPlots = currentFarm?.plots || [];
+  const currentFarmName = currentFarm?.name || "Farm";
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -675,7 +717,8 @@ export default function HarvestClickerPage() {
           </div>
           <div className="lg:col-span-2">
             <PlantingArea
-              plots={plots}
+              plots={currentFarmPlots}
+              farmName={currentFarmName}
               onPlant={handlePlantCrop}
               onHarvest={handleHarvestCrop}
               selectedSeedId={selectedSeedFromOwnedId}
@@ -710,6 +753,10 @@ export default function HarvestClickerPage() {
             farmLevel={farmLevel}
             farmXp={farmXp}
             xpForNextLevel={xpForNextLevel}
+
+            farms={farms}
+            currentFarmId={currentFarmId}
+            onFarmChange={setCurrentFarmId}
           />
         </div>
         <div className="pt-4 text-center space-y-2 sm:space-y-0 sm:space-x-2">
