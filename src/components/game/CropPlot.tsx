@@ -1,7 +1,8 @@
+
 "use client";
 
 import type { FC } from 'react';
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react'; // Added useCallback
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import type { PlotState } from '@/types';
 import { CROPS_DATA } from '@/config/crops';
@@ -9,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Leaf, Zap } from 'lucide-react'; 
-import ParticleBurst from '@/components/effects/ParticleBurst';
+// Removed ParticleBurst import
 
 interface CropPlotProps {
   plot: PlotState;
@@ -22,7 +23,7 @@ interface CropPlotProps {
 const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId, getEffectiveCropGrowTime }) => {
   const [progress, setProgress] = useState(0);
   const [isReadyToHarvest, setIsReadyToHarvest] = useState(plot.isHarvestable || false);
-  const [particleBurstState, setParticleBurstState] = useState<{ key: number; x: number; y: number } | null>(null);
+  // Removed particleBurstState and related refs/handlers
   const plotCardRef = useRef<HTMLDivElement>(null);
 
 
@@ -46,7 +47,6 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
         const currentProgress = effectiveGrowTime > 0 ? Math.min(100, (elapsedTime / effectiveGrowTime) * 100) : 0;
         
         setProgress(prevProgress => {
-          // Only update if significantly different to avoid rapid re-renders from tiny float changes
           if (Math.abs(prevProgress - currentProgress) > 0.1 || currentProgress === 100 || currentProgress === 0) {
             return currentProgress;
           }
@@ -79,14 +79,7 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
 
   const handlePlotClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (isReadyToHarvest && plantedCrop) {
-      if (event.currentTarget) {
-        const rect = event.currentTarget.getBoundingClientRect();
-        setParticleBurstState({
-            key: Date.now(), // Unique key to re-trigger animation if clicked again quickly
-            x: rect.left + rect.width / 2, // Center of the button
-            y: rect.top + rect.height / 2,  // Center of the button
-        });
-      }
+      // Removed particle burst logic
       onHarvest(plot.id, plantedCrop.id);
       setIsReadyToHarvest(false); 
       setProgress(0);
@@ -109,17 +102,14 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
     currentStageImageUrl = typeof imgData === 'string' ? imgData : imgData?.src;
   }
 
-  const handleParticleAnimationComplete = useCallback(() => {
-    setParticleBurstState(null);
-  }, []);
-
+  // Removed handleParticleAnimationComplete callback
 
   return (
     <>
       <div
         className="relative w-full"
         style={{
-          paddingBottom: !plantedCrop ? 'calc(100% + 16px)' : '100%', // Adjusted for empty plot height
+          paddingBottom: !plantedCrop ? 'calc(100% + 16px)' : '100%', 
         }}
       >
         <Card 
@@ -169,14 +159,7 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
           </CardFooter>
         </Card>
       </div>
-      {particleBurstState && (
-        <ParticleBurst
-          key={particleBurstState.key}
-          originX={particleBurstState.x}
-          originY={particleBurstState.y}
-          onAnimationComplete={handleParticleAnimationComplete}
-        />
-      )}
+      {/* Removed ParticleBurst component instance */}
     </>
   );
 };
