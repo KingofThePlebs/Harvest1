@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -17,14 +16,14 @@ import { Save, Loader2 } from 'lucide-react';
 
 const INITIAL_CURRENCY = 20;
 const INITIAL_NUM_PLOTS = 6;
-const SAVE_GAME_KEY = 'harvestClickerSaveData_v2'; 
+const SAVE_GAME_KEY = 'harvestClickerSaveData_v2';
 
 const INITIAL_FARM_LEVEL = 1;
 const INITIAL_FARM_XP = 0;
 
 const generateInitialPlots = (count: number, farmId: string): PlotState[] => {
   return Array.from({ length: count }, (_, i) => ({
-    id: `${farmId}-plot-${i + 1}`, 
+    id: `${farmId}-plot-${i + 1}`,
     isHarvestable: false,
   }));
 };
@@ -58,11 +57,37 @@ export default function HarvestClickerPage() {
   const [farmLevel, setFarmLevel] = useState<number>(INITIAL_FARM_LEVEL);
   const [farmXp, setFarmXp] = useState<number>(INITIAL_FARM_XP);
 
+  // Statistics State
+  const [totalMoneySpent, setTotalMoneySpent] = useState<number>(0);
+  const [totalCropsHarvested, setTotalCropsHarvested] = useState<number>(0);
+  const [gameStartTime, setGameStartTime] = useState<number>(0); // Initialized in loadGame or reset
+  const [formattedGameTime, setFormattedGameTime] = useState<string>("00:00:00");
+
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setIsClient(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (!isClient || gameStartTime === 0) return; // Don't start timer if gameStartTime isn't set
+
+    const timer = setInterval(() => {
+      const now = Date.now();
+      const elapsed = now - gameStartTime;
+      const totalSeconds = Math.floor(elapsed / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+
+      setFormattedGameTime(
+        `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+      );
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [gameStartTime, isClient]);
 
   const calculateXpToNextLevel = useCallback((level: number): number => {
     return 50 + (level - 1) * 50;
@@ -74,13 +99,13 @@ export default function HarvestClickerPage() {
 
     const productionInterval = setInterval(() => {
       const now = Date.now();
-      let neittStateChangedDuringTick = false; 
+      let neittStateChangedDuringTick = false;
       const newlyProducedNitsThisTick = new Map<string, number>();
 
       setOwnedNeitts(prevOwnedNeitts => {
         const nextOwnedNeitts = prevOwnedNeitts.map(neittInstance => {
           if (neittInstance.nitsLeftToProduce <= 0) {
-            return neittInstance; 
+            return neittInstance;
           }
 
           const neittType = NEITTS_DATA.find(nt => nt.id === neittInstance.neittTypeId);
@@ -91,7 +116,7 @@ export default function HarvestClickerPage() {
           if (elapsedTime >= neittType.productionTime) {
             const currentAmount = newlyProducedNitsThisTick.get(neittType.producesNitId) || 0;
             newlyProducedNitsThisTick.set(neittType.producesNitId, currentAmount + 1);
-            
+
             neittStateChangedDuringTick = true;
             const nitsNowLeft = neittInstance.nitsLeftToProduce - 1;
 
@@ -103,7 +128,7 @@ export default function HarvestClickerPage() {
           }
           return neittInstance;
         });
-        return neittStateChangedDuringTick ? nextOwnedNeitts : prevOwnedNeitts; 
+        return neittStateChangedDuringTick ? nextOwnedNeitts : prevOwnedNeitts;
       });
 
       if (newlyProducedNitsThisTick.size > 0) {
@@ -120,7 +145,7 @@ export default function HarvestClickerPage() {
           return updatedGlobalNits.filter(n => n.quantity > 0);
         });
       }
-    }, 1000); 
+    }, 1000);
 
     return () => clearInterval(productionInterval);
   }, [isClient]);
@@ -154,6 +179,7 @@ export default function HarvestClickerPage() {
     }
 
     setCurrency(prevCurrency => prevCurrency - effectiveSeedPrice);
+    setTotalMoneySpent(prev => prev + effectiveSeedPrice); // Track money spent
     setOwnedSeeds(prevOwnedSeeds => {
       const existingSeedIndex = prevOwnedSeeds.findIndex(item => item.cropId === cropId);
       if (existingSeedIndex > -1) {
@@ -226,9 +252,6 @@ export default function HarvestClickerPage() {
         return updatedSeeds.filter(s => s.quantity > 0);
     });
 
-    // Do not deselect seed after planting
-    // setSelectedSeedFromOwnedId(undefined); 
-
     toast({
       title: `${cropToPlant.name} planted!`,
       description: `One ${cropToPlant.name} seed used from inventory. Watch it grow.`,
@@ -253,10 +276,11 @@ export default function HarvestClickerPage() {
       )
     );
 
+    setTotalCropsHarvested(prev => prev + 1); // Track crops harvested
+
     setHarvestedInventory(prevInventory => {
       const existingItemIndex = prevInventory.findIndex(item => item.cropId === harvestedCropId);
       if (existingItemIndex > -1) {
-        // Ensure immutable update for the existing item
         const newInventory = [...prevInventory];
         newInventory[existingItemIndex] = {
           ...prevInventory[existingItemIndex],
@@ -264,7 +288,6 @@ export default function HarvestClickerPage() {
         };
         return newInventory;
       }
-      // If item doesn't exist, add it
       return [...prevInventory, { cropId: harvestedCropId, quantity: 1 }];
     });
 
@@ -287,7 +310,7 @@ export default function HarvestClickerPage() {
           toast({
             title: "Farm Level Up!",
             description: `Congratulations! Your farm reached level ${currentLevel}!`,
-            variant: "default" 
+            variant: "default"
           });
         }
         setFarmLevel(currentLevel);
@@ -341,6 +364,7 @@ export default function HarvestClickerPage() {
     }
 
     setCurrency(prevCurrency => prevCurrency - upgradeToBuy.cost);
+    setTotalMoneySpent(prev => prev + upgradeToBuy.cost); // Track money spent
     setUpgrades(prevUpgrades => ({ ...prevUpgrades, [upgradeId]: true }));
 
     if (upgradeId === 'unlockFarm2') {
@@ -372,13 +396,14 @@ export default function HarvestClickerPage() {
     }
 
     setCurrency(prev => prev - neittToBuy.cost);
+    setTotalMoneySpent(prev => prev + neittToBuy.cost); // Track money spent
     setOwnedNeitts(prevOwnedNeitts => {
       const newNeittInstance: OwnedNeitt = {
-        instanceId: self.crypto.randomUUID(), 
+        instanceId: self.crypto.randomUUID(),
         neittTypeId: neittId,
-        lastProductionCycleStartTime: 0, 
-        nitsLeftToProduce: 0, 
-        initialNitsForCycle: 0, 
+        lastProductionCycleStartTime: 0,
+        nitsLeftToProduce: 0,
+        initialNitsForCycle: 0,
       };
       return [...prevOwnedNeitts, newNeittInstance];
     });
@@ -402,7 +427,7 @@ export default function HarvestClickerPage() {
             toast({ title: `${neittType.name} is already producing!`, description: "It's busy producing Nits." });
             return n;
         }
-        
+
         const requiredCrop = CROPS_DATA.find(c => c.id === neittType.feedCropId);
         if (!requiredCrop) {
             toast({ title: "Feeding Error", description: `Required feed crop (${neittType.feedCropId}) for ${neittType.name} not found.`, variant: "destructive" });
@@ -425,18 +450,18 @@ export default function HarvestClickerPage() {
         });
 
         if (!canFeed) {
-          toast({ 
-              title: `Not Enough ${requiredCrop.name}s!`, 
-              description: `You need 1 ${requiredCrop.name} to feed ${neittType.name}.`, 
-              variant: "destructive" 
+          toast({
+              title: `Not Enough ${requiredCrop.name}s!`,
+              description: `You need 1 ${requiredCrop.name} to feed ${neittType.name}.`,
+              variant: "destructive"
           });
           return n;
         }
-        
+
         const nitsToProduceThisCycle = Math.floor(Math.random() * (neittType.maxProductionCapacity - neittType.minProductionCapacity + 1)) + neittType.minProductionCapacity;
-        
+
         toast({ title: `Fed ${neittType.name}!`, description: `Used 1 ${requiredCrop.name}. It will now produce ${nitsToProduceThisCycle} Nit(s).` });
-        
+
         return {
           ...n,
           nitsLeftToProduce: nitsToProduceThisCycle,
@@ -460,7 +485,7 @@ export default function HarvestClickerPage() {
       toast({ title: "Not enough Nits to sell!", variant: "destructive" });
       return;
     }
-    
+
     const sellPrice = nitInfo.sellPrice;
 
     setProducedNits(prevNits =>
@@ -485,17 +510,20 @@ export default function HarvestClickerPage() {
     if (!isClient) return;
     try {
       const gameState = {
-        farms, 
-        currentFarmId, 
+        farms,
+        currentFarmId,
         currency,
         harvestedInventory,
         ownedSeeds,
         upgrades,
-        ownedNeitts, 
+        ownedNeitts,
         producedNits,
-        selectedSeedFromOwnedId, 
+        selectedSeedFromOwnedId,
         farmLevel,
         farmXp,
+        totalMoneySpent,
+        totalCropsHarvested,
+        gameStartTime,
       };
       localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
       toast({
@@ -510,7 +538,7 @@ export default function HarvestClickerPage() {
         variant: "destructive",
       });
     }
-  }, [farms, currentFarmId, currency, harvestedInventory, ownedSeeds, upgrades, ownedNeitts, producedNits, selectedSeedFromOwnedId, farmLevel, farmXp, toast, isClient]);
+  }, [farms, currentFarmId, currency, harvestedInventory, ownedSeeds, upgrades, ownedNeitts, producedNits, selectedSeedFromOwnedId, farmLevel, farmXp, totalMoneySpent, totalCropsHarvested, gameStartTime, toast, isClient]);
 
   const resetGameStates = useCallback((showToast: boolean = true) => {
     const farm1Plots = generateInitialPlots(INITIAL_NUM_PLOTS, 'farm-1');
@@ -525,6 +553,9 @@ export default function HarvestClickerPage() {
     setProducedNits([]);
     setFarmLevel(INITIAL_FARM_LEVEL);
     setFarmXp(INITIAL_FARM_XP);
+    setTotalMoneySpent(0);
+    setTotalCropsHarvested(0);
+    setGameStartTime(Date.now());
     if (showToast) {
       toast({
         title: "Game Reset",
@@ -539,14 +570,14 @@ export default function HarvestClickerPage() {
       const savedData = localStorage.getItem(SAVE_GAME_KEY);
       if (savedData) {
         const gameState = JSON.parse(savedData);
-        if (gameState && typeof gameState.currency === 'number') { 
-          
+        if (gameState && typeof gameState.currency === 'number') {
+
           let loadedFarms: Farm[] = initialFarmsState;
           if (Array.isArray(gameState.farms) && gameState.farms.length > 0) {
             loadedFarms = gameState.farms.map((farm: Farm) => ({
               ...farm,
-              plots: Array.isArray(farm.plots) ? farm.plots.map((p: any, idx: number) => ({ 
-                  id: p.id || `${farm.id}-plot-${idx + 1}`, 
+              plots: Array.isArray(farm.plots) ? farm.plots.map((p: any, idx: number) => ({
+                  id: p.id || `${farm.id}-plot-${idx + 1}`,
                   cropId: p.cropId,
                   plantTime: p.plantTime,
                   isHarvestable: p.isHarvestable || false,
@@ -560,7 +591,6 @@ export default function HarvestClickerPage() {
                 isHarvestable: p.isHarvestable || false,
             }));
             loadedFarms = [{ id: 'farm-1', name: 'Farm 1', plots: migratedFarm1Plots }];
-            // Migrate 'expandFarm' to 'unlockFarm2'
             if (gameState.upgrades?.expandFarm && !gameState.upgrades?.unlockFarm2) {
               loadedFarms.push({ id: 'farm-2', name: 'Farm 2', plots: generateInitialPlots(INITIAL_NUM_PLOTS, 'farm-2')});
               if(gameState.upgrades) gameState.upgrades.unlockFarm2 = true;
@@ -568,20 +598,30 @@ export default function HarvestClickerPage() {
           }
           setFarms(loadedFarms);
           setCurrentFarmId(gameState.currentFarmId || loadedFarms[0]?.id || 'farm-1');
-          
+
           setCurrency(gameState.currency);
           setHarvestedInventory(gameState.harvestedInventory || []);
           setOwnedSeeds(gameState.ownedSeeds || []);
-          
+
           const loadedUpgrades = {...initialUpgradesState, ...gameState.upgrades};
-          if ('expandFarm' in loadedUpgrades) { // Remove old expandFarm key
+          if ('expandFarm' in loadedUpgrades) {
             delete (loadedUpgrades as any).expandFarm;
           }
           setUpgrades(loadedUpgrades);
 
           setFarmLevel(gameState.farmLevel || INITIAL_FARM_LEVEL);
           setFarmXp(gameState.farmXp || INITIAL_FARM_XP);
-          
+
+          // Load Statistics
+          setTotalMoneySpent(gameState.totalMoneySpent || 0);
+          setTotalCropsHarvested(gameState.totalCropsHarvested || 0);
+          if (typeof gameState.gameStartTime === 'number' && gameState.gameStartTime > 0) {
+            setGameStartTime(gameState.gameStartTime);
+          } else {
+            setGameStartTime(Date.now()); // For old saves or new games
+          }
+
+
           let loadedOwnedNeittsFromState: any[] = gameState.ownedNeitts || [];
           const processedNeitts: OwnedNeitt[] = [];
           const validNeittTypeIds = new Set(NEITTS_DATA.map(nt => nt.id));
@@ -596,25 +636,25 @@ export default function HarvestClickerPage() {
               const neittTypeId = neittFromFile.neittTypeId;
               if (!neittTypeId || typeof neittTypeId !== 'string' || !validNeittTypeIds.has(neittTypeId)) {
                 console.warn(`Skipping Neitt with invalid or missing neittTypeId at index ${index}:`, neittFromFile);
-                return; 
+                return;
               }
-              
+
               const neittTypeDetails = NEITTS_DATA.find(nt => nt.id === neittTypeId);
-              if (!neittTypeDetails) { 
+              if (!neittTypeDetails) {
                  console.warn(`Skipping Neitt - type details not found for id ${neittTypeId} at index ${index}:`, neittFromFile);
                  return;
               }
 
               const instanceId = neittFromFile.instanceId || self.crypto.randomUUID();
-              const lastProductionCycleStartTime = typeof neittFromFile.lastProductionCycleStartTime === 'number' 
-                                                  ? neittFromFile.lastProductionCycleStartTime 
-                                                  : 0; 
-              const nitsLeftToProduce = typeof neittFromFile.nitsLeftToProduce === 'number' 
+              const lastProductionCycleStartTime = typeof neittFromFile.lastProductionCycleStartTime === 'number'
+                                                  ? neittFromFile.lastProductionCycleStartTime
+                                                  : 0;
+              const nitsLeftToProduce = typeof neittFromFile.nitsLeftToProduce === 'number'
                                         ? neittFromFile.nitsLeftToProduce
-                                        : 0; 
-              
-              const initialNitsForCycle = typeof neittFromFile.initialNitsForCycle === 'number' 
-                                        ? neittFromFile.initialNitsForCycle 
+                                        : 0;
+
+              const initialNitsForCycle = typeof neittFromFile.initialNitsForCycle === 'number'
+                                        ? neittFromFile.initialNitsForCycle
                                         : (nitsLeftToProduce > 0 ? nitsLeftToProduce : 0);
 
 
@@ -628,9 +668,9 @@ export default function HarvestClickerPage() {
             });
           }
           setOwnedNeitts(processedNeitts);
-          
+
           setProducedNits(gameState.producedNits || []);
-          setSelectedSeedFromOwnedId(gameState.selectedSeedFromOwnedId || undefined); 
+          setSelectedSeedFromOwnedId(gameState.selectedSeedFromOwnedId || undefined);
 
           toast({
             title: "Game Loaded!",
@@ -642,14 +682,15 @@ export default function HarvestClickerPage() {
             description: "Could not load previous progress. Starting fresh.",
             variant: "destructive",
           });
-            resetGameStates(false); 
+            resetGameStates(false);
         }
       } else {
          toast({
             title: "Welcome Farmer!",
             description: "Starting a new game. Good luck!",
           });
-         resetGameStates(false); 
+         resetGameStates(false);
+         setGameStartTime(Date.now()); // Explicitly set for a brand new game
       }
     } catch (error) {
       console.error("Failed to load game:", error);
@@ -658,7 +699,8 @@ export default function HarvestClickerPage() {
         description: "Could not load your progress. Starting fresh.",
         variant: "destructive",
       });
-      resetGameStates(false); 
+      resetGameStates(false);
+      setGameStartTime(Date.now()); // Ensure it's set on error too
     }
   }, [toast, isClient, resetGameStates]);
 
@@ -679,7 +721,7 @@ export default function HarvestClickerPage() {
         window.removeEventListener('beforeunload', handleBeforeUnload);
       };
     }
-  }, [isClient, saveGame]); 
+  }, [isClient, saveGame]);
 
 
   if (!isClient) {
@@ -731,17 +773,17 @@ export default function HarvestClickerPage() {
             purchasedUpgrades={upgrades}
             onBuyUpgrade={handleBuyUpgrade}
             getEffectiveCropSellPrice={getEffectiveCropSellPrice}
-            
+
             neittsData={NEITTS_DATA}
             ownedNeitts={ownedNeitts}
             onBuyNeitt={handleBuyNeitt}
-            onFeedNeitt={handleFeedNeitt} 
-            
+            onFeedNeitt={handleFeedNeitt}
+
             producedNits={producedNits}
             nitsData={NITS_DATA}
             onSellNit={handleSellNit}
-            
-            cropsData={CROPS_DATA} 
+
+            cropsData={CROPS_DATA}
 
             farmLevel={farmLevel}
             farmXp={farmXp}
@@ -750,6 +792,11 @@ export default function HarvestClickerPage() {
             farms={farms}
             currentFarmId={currentFarmId}
             onFarmChange={setCurrentFarmId}
+
+            // Statistics
+            totalMoneySpent={totalMoneySpent}
+            totalCropsHarvested={totalCropsHarvested}
+            formattedGameTime={formattedGameTime}
           />
         </div>
         <div className="pt-4 text-center space-y-2 sm:space-y-0 sm:space-x-2">
@@ -764,5 +811,3 @@ export default function HarvestClickerPage() {
     </div>
   );
 }
-
-    

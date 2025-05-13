@@ -7,7 +7,7 @@ import { CROPS_DATA } from '@/config/crops';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIcon, Star } from 'lucide-react';
+import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIcon, Star, BarChart3, Clock } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
@@ -50,9 +50,14 @@ interface InventoryAndShopProps {
   farmXp: number;
   xpForNextLevel: number;
 
-  farms: Farm[]; // Add farms prop
-  currentFarmId: string; // Add currentFarmId prop
-  onFarmChange: (farmId: string) => void; // Add handler for farm change
+  farms: Farm[];
+  currentFarmId: string;
+  onFarmChange: (farmId: string) => void;
+
+  // Statistics
+  totalMoneySpent: number;
+  totalCropsHarvested: number;
+  formattedGameTime: string;
 }
 
 const tabDefinitions: TabDefinition[] = [
@@ -89,6 +94,9 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   farms,
   currentFarmId,
   onFarmChange,
+  totalMoneySpent,
+  totalCropsHarvested,
+  formattedGameTime,
 }) => {
   const getCropById = (cropId: string): Crop | undefined => cropsData.find(c => c.id === cropId);
   const getNitById = (nitId: string): Nit | undefined => nitsData.find(n => n.id === nitId);
@@ -193,7 +201,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                 <CardTitle className="text-xl text-primary-foreground/80 flex items-center gap-2">
                   <HomeIcon className="w-6 h-6"/>My Farm Overview
                 </CardTitle>
-                {farms.length > 0 && ( // Check if farms array is not empty
+                {farms.length > 0 && (
                   <Select value={currentFarmId} onValueChange={onFarmChange}>
                     <SelectTrigger className="w-full sm:w-[180px]">
                       <SelectValue placeholder="Select Farm" />
@@ -209,7 +217,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                 )}
               </div>
               <CardDescription>Currently viewing: <span className="font-semibold">{currentFarmName}</span>. Track your farm's progress and level.</CardDescription>
-              
+
               <div className="space-y-3 p-4 bg-secondary/20 rounded-md shadow-sm">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-lg font-semibold">
@@ -218,7 +226,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                   </div>
                   <span className="text-lg font-bold text-primary">{farmLevel}</span>
                 </div>
-                
+
                 <Separator />
 
                 <div>
@@ -230,6 +238,35 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                   <p className="text-xs text-muted-foreground mt-1 text-center">
                     {Math.max(0, xpForNextLevel - farmXp)} XP to next level
                   </p>
+                </div>
+              </div>
+
+              <Separator className="my-4"/>
+
+              <CardTitle className="text-lg text-primary-foreground/70 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5"/>Farm Statistics
+              </CardTitle>
+              <div className="space-y-2 p-4 bg-secondary/20 rounded-md shadow-sm">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Coins className="w-4 h-4 text-primary/80" />
+                    Total Money Spent:
+                  </div>
+                  <span className="font-semibold">{totalMoneySpent}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Sprout className="w-4 h-4 text-green-500" />
+                    Crops Harvested:
+                  </div>
+                  <span className="font-semibold">{totalCropsHarvested}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Clock className="w-4 h-4 text-blue-500" />
+                    Game Time:
+                  </div>
+                  <span className="font-semibold">{formattedGameTime}</span>
                 </div>
               </div>
 
@@ -369,7 +406,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                           <p className="text-xs text-muted-foreground">{upgrade.description}</p>
                         </div>
                       </div>
-                      {isPurchased ? ( 
+                      {isPurchased ? (
                         <div className="flex items-center text-green-600 font-semibold">
                           <CheckCircle className="w-5 h-5 mr-1" /> Purchased
                         </div>
@@ -466,7 +503,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                       if (ownedNeittInstance.nitsLeftToProduce > 0 && ownedNeittInstance.initialNitsForCycle > 0) {
                         const elapsedTime = Date.now() - ownedNeittInstance.lastProductionCycleStartTime;
                         const progressForCurrentNit = Math.min(100, (elapsedTime / neittDetails.productionTime) * 100);
-                        productionProgress = progressForCurrentNit; 
+                        productionProgress = progressForCurrentNit;
 
                         const nitsProducedSoFar = ownedNeittInstance.initialNitsForCycle - ownedNeittInstance.nitsLeftToProduce;
                         statusText = `Producing Nit ${nitsProducedSoFar + 1}/${ownedNeittInstance.initialNitsForCycle}`;
@@ -496,7 +533,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                         <Card key={ownedNeittInstance.instanceId} className="flex flex-col items-center p-3 bg-secondary/40 shadow-sm rounded-lg hover:shadow-md transition-shadow">
                            {typeof neittDetails.imageUrl === 'string' ? (
                              <Image src={neittDetails.imageUrl} alt={neittDetails.name} width={48} height={48} className="rounded-full mb-1 object-cover ring-2 ring-primary/50" data-ai-hint={neittDetails.dataAiHint} />
-                          ) : neittDetails.imageUrl && 'src' in neittDetails.imageUrl ? ( 
+                          ) : neittDetails.imageUrl && 'src' in neittDetails.imageUrl ? (
                              <Image src={neittDetails.imageUrl} alt={neittDetails.name} width={48} height={48} className="rounded-full mb-1 object-cover ring-2 ring-primary/50" data-ai-hint={neittDetails.dataAiHint} />
                           ) : NeittIcon ? (
                             <NeittIcon className="w-12 h-12 mb-1" style={{ color: neittDetails.color || 'hsl(var(--primary))' }} />
@@ -550,7 +587,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                         <div className="flex items-center space-x-3">
                            {typeof neitt.imageUrl === 'string' ? (
                              <Image src={neitt.imageUrl} alt={neitt.name} width={40} height={40} className="rounded-md object-cover" data-ai-hint={neitt.dataAiHint}/>
-                           ) : neitt.imageUrl && 'src' in neitt.imageUrl ? ( 
+                           ) : neitt.imageUrl && 'src' in neitt.imageUrl ? (
                              <Image src={neitt.imageUrl} alt={neitt.name} width={40} height={40} className="rounded-md object-cover" data-ai-hint={neitt.dataAiHint}/>
                           ) : NeittShopIcon ? (
                             <NeittShopIcon className="w-10 h-10" style={{ color: neitt.color || 'hsl(var(--primary))' }}/>
@@ -588,4 +625,3 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
 };
 
 export default InventoryAndShop;
-
