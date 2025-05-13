@@ -79,6 +79,7 @@ export interface NeittType {
   minProductionCapacity: number; // Minimum Nits it produces per feeding cycle
   maxProductionCapacity: number; // Maximum Nits it produces per feeding cycle
   feedCropId: string; // ID of the crop this Neitt eats
+  neittFeedXpYield?: number; // XP gained from feeding this Neitt
 }
 
 export interface OwnedNeitt { // Represents an individual Neitt instance

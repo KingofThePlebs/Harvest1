@@ -7,7 +7,7 @@ import { CROPS_DATA } from '@/config/crops';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIcon, Star, BarChart3, Clock } from 'lucide-react';
+import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIcon, Star, BarChart3, Clock, Users } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
@@ -49,6 +49,10 @@ interface InventoryAndShopProps {
   farmLevel: number;
   farmXp: number;
   xpForNextLevel: number;
+  neittSlaverLevel: number;
+  neittSlaverXp: number;
+  xpForNextNeittSlaverLevel: number;
+
 
   farms: Farm[];
   currentFarmId: string;
@@ -91,6 +95,9 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   farmLevel,
   farmXp,
   xpForNextLevel,
+  neittSlaverLevel,
+  neittSlaverXp,
+  xpForNextNeittSlaverLevel,
   farms,
   currentFarmId,
   onFarmChange,
@@ -105,6 +112,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   const isMobile = useIsMobile();
 
   const farmProgressPercent = xpForNextLevel > 0 ? (farmXp / xpForNextLevel) * 100 : 0;
+  const neittSlaverProgressPercent = xpForNextNeittSlaverLevel > 0 ? (neittSlaverXp / xpForNextNeittSlaverLevel) * 100 : 0;
   const currentFarmName = farms.find(f => f.id === currentFarmId)?.name || "Farm";
 
   const availableUpgrades = upgradesData.filter(upgrade => {
@@ -226,17 +234,34 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                   </div>
                   <span className="text-lg font-bold text-primary">{farmLevel}</span>
                 </div>
-
-                <Separator />
-
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-muted-foreground">Experience Points (XP):</span>
+                    <span className="text-sm font-medium text-muted-foreground">Farm XP:</span>
                     <span className="text-sm font-semibold">{farmXp} / {xpForNextLevel}</span>
                   </div>
                   <Progress value={farmProgressPercent} className="w-full h-3" />
                   <p className="text-xs text-muted-foreground mt-1 text-center">
                     {Math.max(0, xpForNextLevel - farmXp)} XP to next level
+                  </p>
+                </div>
+                
+                <Separator/>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-lg font-semibold">
+                    <Users className="w-5 h-5 text-purple-500" /> {/* Using Users icon for Neitt Slaver for now */}
+                    Neitt Slaver Level:
+                  </div>
+                  <span className="text-lg font-bold text-purple-500">{neittSlaverLevel}</span>
+                </div>
+                 <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium text-muted-foreground">Neitt Slaver XP:</span>
+                    <span className="text-sm font-semibold">{neittSlaverXp} / {xpForNextNeittSlaverLevel}</span>
+                  </div>
+                  <Progress value={neittSlaverProgressPercent} className="w-full h-3" indicatorClassName="bg-purple-500" />
+                  <p className="text-xs text-muted-foreground mt-1 text-center">
+                    {Math.max(0, xpForNextNeittSlaverLevel - neittSlaverXp)} XP to next level
                   </p>
                 </div>
               </div>
@@ -271,7 +296,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
               </div>
 
               <CardDescription className="mt-4 text-sm">
-                Gain XP by harvesting crops. Leveling up your farm might unlock new features or bonuses in the future!
+                Gain XP by harvesting crops. Leveling up your farm might unlock new features or bonuses in the future! Feed Neitts to level up your Neitt Slaver rank.
               </CardDescription>
 
             </CardContent>
@@ -531,9 +556,9 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
 
                       return (
                         <Card key={ownedNeittInstance.instanceId} className="flex flex-col items-center p-3 bg-secondary/40 shadow-sm rounded-lg hover:shadow-md transition-shadow">
-                           {typeof neittDetails.imageUrl === 'string' ? (
+                           {neittDetails.imageUrl && typeof neittDetails.imageUrl === 'object' && 'src' in neittDetails.imageUrl ? (
                              <Image src={neittDetails.imageUrl} alt={neittDetails.name} width={48} height={48} className="rounded-full mb-1 object-cover ring-2 ring-primary/50" data-ai-hint={neittDetails.dataAiHint} />
-                          ) : neittDetails.imageUrl && 'src' in neittDetails.imageUrl ? (
+                          ) : typeof neittDetails.imageUrl === 'string' ? (
                              <Image src={neittDetails.imageUrl} alt={neittDetails.name} width={48} height={48} className="rounded-full mb-1 object-cover ring-2 ring-primary/50" data-ai-hint={neittDetails.dataAiHint} />
                           ) : NeittIcon ? (
                             <NeittIcon className="w-12 h-12 mb-1" style={{ color: neittDetails.color || 'hsl(var(--primary))' }} />
@@ -585,9 +610,9 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                     return (
                       <li key={neitt.id} className={`flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm hover:bg-secondary/50 transition-all ${!canAfford ? 'opacity-60' : ''}`}>
                         <div className="flex items-center space-x-3">
-                           {typeof neitt.imageUrl === 'string' ? (
+                           {neitt.imageUrl && typeof neitt.imageUrl === 'object' && 'src' in neitt.imageUrl ? (
                              <Image src={neitt.imageUrl} alt={neitt.name} width={40} height={40} className="rounded-md object-cover" data-ai-hint={neitt.dataAiHint}/>
-                           ) : neitt.imageUrl && 'src' in neitt.imageUrl ? (
+                           ) : typeof neitt.imageUrl === 'string' ? (
                              <Image src={neitt.imageUrl} alt={neitt.name} width={40} height={40} className="rounded-md object-cover" data-ai-hint={neitt.dataAiHint}/>
                           ) : NeittShopIcon ? (
                             <NeittShopIcon className="w-10 h-10" style={{ color: neitt.color || 'hsl(var(--primary))' }}/>

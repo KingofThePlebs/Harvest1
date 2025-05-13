@@ -14,10 +14,10 @@ export const NEITTS_DATA: NeittType[] = [
     dataAiHint: 'green neitt',
     producesNitId: 'green_nit',
     productionTime: 35 * 1000, // 35 seconds per Nit
-    minProductionCapacity: 1, // Produces 1-3 Nits per feeding cycle
-    maxProductionCapacity: 3, // Produces 1-3 Nits per feeding cycle
+    minProductionCapacity: 1, 
+    maxProductionCapacity: 3, 
     feedCropId: 'carrot', // Eats carrots
+    neittFeedXpYield: 15, // Green Neitts give 15 XP per feed
   },
   // Other Neitts removed as per request
 ];
-
