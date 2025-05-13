@@ -27,7 +27,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-const INITIAL_CURRENCY = 10000;
+const INITIAL_CURRENCY = 10;
 const INITIAL_NUM_PLOTS = 6;
 const SAVE_GAME_KEY = 'harvestClickerSaveData_v2.6_neitt_arrival'; // Incremented version
 
