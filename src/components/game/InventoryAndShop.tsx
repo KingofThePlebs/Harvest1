@@ -3,12 +3,12 @@ import type { FC } from 'react';
 import { useState } from 'react';
 import Image from 'next/image';
 import type { InventoryItem, Crop, UpgradeDefinition, UpgradesState, UpgradeId, NeittType, OwnedNeitt, Nit, OwnedNit, Farm, Quest, QuestItemRequirement } from '@/types';
-import { CROPS_DATA } from '@/config/crops'; // Keep this if cropsData prop is removed and used directly
-import { NITS_DATA } from '@/config/nits'; // Keep this if nitsData prop is removed
+import { CROPS_DATA } from '@/config/crops'; 
+import { NITS_DATA } from '@/config/nits'; 
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIcon, Star, BarChart3, Clock, Users, DollarSign, HeartPulse, ScrollText, CheckSquare, Hammer, Home } from 'lucide-react';
+import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIcon, Star, BarChart3, Clock, Users, DollarSign, HeartPulse, ScrollText, CheckSquare, Hammer, Home, Landmark } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
@@ -69,6 +69,9 @@ interface InventoryAndShopProps {
 
   activeQuests: Quest[];
   onCompleteQuest: (questId: string) => void;
+
+  neittHouseMoveIn: { startTime: number; duration: number; houseId: string } | null;
+  neittsInTown: number;
 }
 
 const tabDefinitions: TabDefinition[] = [
@@ -76,7 +79,7 @@ const tabDefinitions: TabDefinition[] = [
   { id: 'myFarm', label: 'My Farm', icon: HomeIcon },
   { id: 'sellMarket', label: 'Sell Market', icon: Handshake },
   { id: 'upgrades', label: 'Upgrades', icon: TrendingUp },
-  { id: 'town', label: 'Town', icon: Building }, // Icon for Quest Square
+  { id: 'town', label: 'Town', icon: Building },
   { id: 'neittFarm', label: 'Neitt Farm', icon: NeittIconLucide },
 ];
 
@@ -98,7 +101,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   producedNits,
   nitsData,
   onSellNit,
-  cropsData, // Make sure this is passed if used directly for quest item names
+  cropsData, 
   farmLevel,
   farmXp,
   xpForNextLevel,
@@ -117,6 +120,8 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   formattedGameTime,
   activeQuests,
   onCompleteQuest,
+  neittHouseMoveIn,
+  neittsInTown,
 }) => {
   const getCropById = (cropId: string): Crop | undefined => cropsData.find(c => c.id === cropId);
   const getNitById = (nitId: string): Nit | undefined => nitsData.find(n => n.id === nitId);
@@ -130,7 +135,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   const currentFarmName = farms.find(f => f.id === currentFarmId)?.name || "Farm";
 
   const availableUpgrades = upgradesData.filter(upgrade => {
-    if (upgrade.id === 'unlockFarm2' || upgrade.id === 'unlockFarm3') {
+    if (upgrade.id === 'unlockFarm2' || upgrade.id === 'unlockFarm3' || upgrade.id === 'buildHouse') {
         return !purchasedUpgrades[upgrade.id] && (upgrade.isUnlocked ? upgrade.isUnlocked(purchasedUpgrades) : true);
     }
     return upgrade.isUnlocked ? upgrade.isUnlocked(purchasedUpgrades) : true;
@@ -505,7 +510,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                     </li>
                   );
                 })}
-                 {upgradesData.filter(u => (u.id === 'unlockFarm2' && purchasedUpgrades.unlockFarm2) || (u.id === 'unlockFarm3' && purchasedUpgrades.unlockFarm3)).map(purchasedFarmUpgrade => (
+                 {upgradesData.filter(u => (u.id === 'unlockFarm2' && purchasedUpgrades.unlockFarm2) || (u.id === 'unlockFarm3' && purchasedUpgrades.unlockFarm3) || (u.id === 'buildHouse' && purchasedUpgrades.buildHouse)).map(purchasedFarmUpgrade => (
                      <li key={`${purchasedFarmUpgrade.id}-purchased`} className="flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm opacity-70">
                         <div className="flex items-center space-x-3">
                             <purchasedFarmUpgrade.icon className="w-8 h-8 text-blue-500 flex-shrink-0" />
@@ -527,6 +532,72 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
         <TabsContent value="town">
           <ScrollArea className="h-[300px] sm:h-[400px] lg:max-h-[calc(60vh-100px)]">
             <CardContent className="space-y-4 pt-4">
+                <Card className="hover:shadow-md transition-shadow">
+                    <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2"><Landmark className="w-5 h-5" /> Town Hall</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground">Manage your town's development and policies.</p>
+                    </CardContent>
+                    <CardFooter>
+                        <Button variant="outline" className="w-full" disabled>Coming Soon</Button>
+                    </CardFooter>
+                </Card>
+
+                <Card className="hover:shadow-md transition-shadow">
+                    <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2"><Home className="w-5 h-5" /> Housing</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {!purchasedUpgrades.buildHouse ? (
+                            <p className="text-sm text-muted-foreground">Visit the Upgrades tab to build your first house and attract new Neitt residents.</p>
+                        ) : neittHouseMoveIn ? (
+                            <div>
+                                <p className="text-sm text-muted-foreground">A Neitt is moving in!</p>
+                                <Progress 
+                                    value={Math.min(100, ((Date.now() - neittHouseMoveIn.startTime) / neittHouseMoveIn.duration) * 100)} 
+                                    className="w-full h-3 mt-2" 
+                                />
+                                <p className="text-xs text-muted-foreground mt-1 text-center">
+                                    {`${Math.floor(Math.max(0, neittHouseMoveIn.duration - (Date.now() - neittHouseMoveIn.startTime))/1000)}s remaining`}
+                                </p>
+                            </div>
+                        ) : (
+                            <p className="text-sm text-muted-foreground">
+                                Town Population: {neittsInTown} Neitt(s).
+                                {/* TODO: Add logic for more houses later */}
+                            </p>
+                        )}
+                    </CardContent>
+                     {/* Footer can be empty or show info if no direct action */}
+                </Card>
+
+                <Card className="hover:shadow-md transition-shadow">
+                    <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2"><Hammer className="w-5 h-5" /> Production Buildings</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground">Construct buildings to automate or enhance production. Assign your Neitts to work in them!</p>
+                    </CardContent>
+                    <CardFooter>
+                        <Button variant="outline" className="w-full" disabled>Manage Production (Coming Soon)</Button>
+                    </CardFooter>
+                </Card>
+
+                <Card className="hover:shadow-md transition-shadow">
+                    <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2"><ShoppingCart className="w-5 h-5" /> General Store</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground">Stock up on supplies or find rare items.</p>
+                    </CardContent>
+                    <CardFooter>
+                        <Button variant="outline" className="w-full" disabled>Coming Soon</Button>
+                    </CardFooter>
+                </Card>
+                
+                <Separator className="my-6"/>
+
                 <CardTitle className="text-xl text-primary-foreground/80 flex items-center gap-2">
                     <ScrollText className="w-6 h-6" /> Quest Square
                 </CardTitle>
@@ -580,42 +651,6 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                         })}
                     </div>
                 )}
-                 <Separator className="my-6"/>
-                 <div className="space-y-4">
-                    <Card className="hover:shadow-md transition-shadow">
-                        <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2"><Home className="w-5 h-5" /> Housing</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground">Upgrade your living space or build new homes.</p>
-                        </CardContent>
-                        <CardFooter>
-                            <Button variant="outline" className="w-full" disabled>Coming Soon</Button>
-                        </CardFooter>
-                    </Card>
-                    <Card className="hover:shadow-md transition-shadow">
-                        <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2"><Hammer className="w-5 h-5" /> Production Buildings</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground">Construct buildings to automate or enhance production.</p>
-                        </CardContent>
-                        <CardFooter>
-                            <Button variant="outline" className="w-full" disabled>Coming Soon</Button>
-                        </CardFooter>
-                    </Card>
-                     <Card className="hover:shadow-md transition-shadow">
-                        <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2"><ShoppingCart className="w-5 h-5" /> General Store</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground">Stock up on supplies or find rare items.</p>
-                        </CardContent>
-                        <CardFooter>
-                            <Button variant="outline" className="w-full" disabled>Coming Soon</Button>
-                        </CardFooter>
-                    </Card>
-                 </div>
             </CardContent>
           </ScrollArea>
         </TabsContent>
@@ -767,4 +802,3 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
 };
 
 export default InventoryAndShop;
-

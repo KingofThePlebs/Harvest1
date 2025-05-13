@@ -48,8 +48,9 @@ export interface UpgradesState {
   fertilizer: boolean;
   negotiationSkills: boolean;
   bulkDiscount: boolean;
-  unlockFarm2: boolean; // New upgrade to unlock Farm 2
-  unlockFarm3: boolean; // New upgrade to unlock Farm 3
+  unlockFarm2: boolean; 
+  unlockFarm3: boolean; 
+  buildHouse: boolean; // Added for building a house
 }
 
 // Defines the possible IDs for upgrades, derived from UpgradesState keys
@@ -130,10 +131,5 @@ export interface QuestTemplate {
     getEffectiveCropSellPrice: (basePrice: number) => number,
     playerFarmLevel: number // To potentially scale difficulty or item availability
   ) => { requirements: QuestItemRequirement[], reward: number } | null; // Returns null if quest cannot be generated
-  // rewardMultiplier: number; // Multiplier applied to the sum of base sell prices of required items
-  // minQuantity?: number;
-  // maxQuantity?: number;
-  // itemType: 'crop' | 'nit' | 'mixed'; // Type of item(s) this quest template uses
-  // specificItemId?: string; // Optional: if the template is for a very specific item
   minFarmLevel?: number; // Minimum farm level to unlock this quest type
 }

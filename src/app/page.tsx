@@ -29,7 +29,7 @@ import {
 
 const INITIAL_CURRENCY = 20;
 const INITIAL_NUM_PLOTS = 6;
-const SAVE_GAME_KEY = 'harvestClickerSaveData_v2.1_quests'; // Incremented version for new save structure
+const SAVE_GAME_KEY = 'harvestClickerSaveData_v2.2_town'; // Incremented version for new save structure
 
 const INITIAL_FARM_LEVEL = 1;
 const INITIAL_FARM_XP = 0;
@@ -37,6 +37,8 @@ const INITIAL_NEITT_SLAVER_LEVEL = 1;
 const INITIAL_NEITT_SLAVER_XP = 0;
 const INITIAL_TRADER_LEVEL = 1;
 const INITIAL_TRADER_XP = 0;
+const INITIAL_NEITTS_IN_TOWN = 0;
+const NEITT_MOVE_IN_DURATION = 30 * 1000; // 30 seconds
 
 
 const generateInitialPlots = (count: number, farmId: string): PlotState[] => {
@@ -52,6 +54,7 @@ const initialUpgradesState: UpgradesState = {
   bulkDiscount: false,
   unlockFarm2: false,
   unlockFarm3: false,
+  buildHouse: false,
 };
 
 const initialFarmsState: Farm[] = [
@@ -90,6 +93,10 @@ export default function HarvestClickerPage() {
   const [activeQuests, setActiveQuests] = useState<Quest[]>([]);
   const [lastQuestGenerationTime, setLastQuestGenerationTime] = useState<number>(0);
 
+  // Town State
+  const [neittHouseMoveIn, setNeittHouseMoveIn] = useState<{ startTime: number; duration: number; houseId: string } | null>(null);
+  const [neittsInTown, setNeittsInTown] = useState<number>(INITIAL_NEITTS_IN_TOWN);
+
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -115,6 +122,25 @@ export default function HarvestClickerPage() {
 
     return () => clearInterval(timer);
   }, [gameStartTime, isClient]);
+
+  // Neitt House Move-in Logic
+  useEffect(() => {
+    if (!isClient || !neittHouseMoveIn) return;
+
+    const interval = setInterval(() => {
+      const elapsedTime = Date.now() - neittHouseMoveIn.startTime;
+      if (elapsedTime >= neittHouseMoveIn.duration) {
+        setNeittsInTown(prev => prev + 1);
+        setNeittHouseMoveIn(null);
+        toast({ title: "A New Resident!", description: "A Neitt has moved into the house." });
+        clearInterval(interval);
+      }
+      // Re-render to update progress bar (can be done by a dummy state update or by deriving progress in component)
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isClient, neittHouseMoveIn, toast]);
+
 
   const calculateXpToNextLevel = useCallback((level: number): number => {
     const baseXP = 50; 
@@ -145,12 +171,11 @@ export default function HarvestClickerPage() {
         let title = template.titleGenerator();
         let description = template.descriptionGenerator(0); // Base description
 
-        // Customize title and description based on actual items in requirements
         if (requirements.length > 0) {
             const item1Info = requirements[0].type === 'crop' 
                 ? CROPS_DATA.find(c => c.id === requirements[0].itemId)
                 : NITS_DATA.find(n => n.id === requirements[0].itemId);
-            const item2Info = requirements.length > 1 
+            const item2Info = requirements.length > 1 && requirements[1]
                 ? (requirements[1].type === 'crop'
                     ? CROPS_DATA.find(c => c.id === requirements[1].itemId)
                     : NITS_DATA.find(n => n.id === requirements[1].itemId))
@@ -179,7 +204,6 @@ export default function HarvestClickerPage() {
     if (newQuests.length > 0) {
       setActiveQuests(prevQuests => {
         const combined = [...prevQuests, ...newQuests];
-        // Sort by timePosted descending to keep newest, then slice
         const sorted = combined.sort((a, b) => b.timePosted - a.timePosted);
         return sorted.slice(0, MAX_ACTIVE_QUESTS);
       });
@@ -194,11 +218,10 @@ export default function HarvestClickerPage() {
     const questGenerationTimer = setInterval(() => {
       const now = Date.now();
       if (now - lastQuestGenerationTime >= QUEST_GENERATION_INTERVAL) {
-        // console.log("Attempting to generate new quests...");
         generateNewQuests();
         setLastQuestGenerationTime(now);
       }
-    }, QUEST_CHECK_INTERVAL); // Check more frequently if it's time
+    }, QUEST_CHECK_INTERVAL); 
 
     return () => clearInterval(questGenerationTimer);
   }, [isClient, lastQuestGenerationTime, generateNewQuests]);
@@ -510,7 +533,11 @@ export default function HarvestClickerPage() {
         return [...prevFarms, { id: 'farm-3', name: 'Farm 3', plots: generateInitialPlots(INITIAL_NUM_PLOTS, 'farm-3') }];
       });
       toast({ title: "Farm 3 Unlocked!", description: `You bought ${upgradeToBuy.name} for ${upgradeToBuy.cost} gold.` });
-    } else {
+    } else if (upgradeId === 'buildHouse') {
+        setNeittHouseMoveIn({ startTime: Date.now(), duration: NEITT_MOVE_IN_DURATION, houseId: 'mainHouse' });
+        toast({ title: "House Construction Started!", description: `You bought ${upgradeToBuy.name} for ${upgradeToBuy.cost} gold. A Neitt will move in soon.` });
+    }
+     else {
       toast({ title: "Upgrade Purchased!", description: `You bought ${upgradeToBuy.name} for ${upgradeToBuy.cost} gold.` });
     }
   }, [currency, upgrades, toast]);
@@ -697,7 +724,6 @@ export default function HarvestClickerPage() {
       return;
     }
 
-    // Check requirements
     let canComplete = true;
     const tempHarvestedInventory = [...harvestedInventory];
     const tempProducedNits = [...producedNits];
@@ -723,7 +749,6 @@ export default function HarvestClickerPage() {
       return;
     }
 
-    // Deduct items
     setHarvestedInventory(currentInventory => {
       let newInventory = [...currentInventory];
       quest.requirements.filter(r => r.type === 'crop').forEach(req => {
@@ -746,15 +771,11 @@ export default function HarvestClickerPage() {
       return newNits.filter(item => item.quantity > 0);
     });
 
-    // Add reward
     setCurrency(prev => prev + quest.rewardCurrency);
-
-    // Remove quest
     setActiveQuests(prevQuests => prevQuests.filter(q => q.id !== questId));
-
     toast({ title: "Quest Completed!", description: `You earned ${quest.rewardCurrency} gold for completing "${quest.title}".` });
 
-  }, [activeQuests, harvestedInventory, producedNits, currency, toast, setHarvestedInventory, setProducedNits, setCurrency, setActiveQuests]);
+  }, [activeQuests, harvestedInventory, producedNits, toast]);
 
 
   const saveGame = useCallback(() => {
@@ -780,8 +801,10 @@ export default function HarvestClickerPage() {
         totalCropsHarvested,
         totalNeittsFed,
         gameStartTime,
-        activeQuests, // Save quests
-        lastQuestGenerationTime, // Save last quest gen time
+        activeQuests, 
+        lastQuestGenerationTime, 
+        neittHouseMoveIn, // Save Neitt house move-in state
+        neittsInTown, // Save Neitts in town
       };
       localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
       toast({
@@ -801,7 +824,8 @@ export default function HarvestClickerPage() {
       ownedNeitts, producedNits, selectedSeedFromOwnedId, 
       farmLevel, farmXp, neittSlaverLevel, neittSlaverXp, traderLevel, traderXp,
       totalMoneySpent, totalCropsHarvested, totalNeittsFed, gameStartTime, 
-      activeQuests, lastQuestGenerationTime, // Include in dependencies
+      activeQuests, lastQuestGenerationTime, 
+      neittHouseMoveIn, neittsInTown, // Include in dependencies
       toast, isClient
   ]);
 
@@ -826,8 +850,10 @@ export default function HarvestClickerPage() {
     setTotalCropsHarvested(0);
     setTotalNeittsFed(0);
     setGameStartTime(Date.now());
-    setActiveQuests([]); // Reset quests
-    setLastQuestGenerationTime(Date.now()); // Reset quest timer
+    setActiveQuests([]); 
+    setLastQuestGenerationTime(Date.now()); 
+    setNeittHouseMoveIn(null); // Reset Neitt house move-in
+    setNeittsInTown(INITIAL_NEITTS_IN_TOWN); // Reset Neitts in town
     if (showToast) {
       toast({
         title: "Game Reset",
@@ -920,13 +946,26 @@ export default function HarvestClickerPage() {
           }
 
           setActiveQuests(gameState.activeQuests || []);
-          // If loading an old save without lastQuestGenerationTime, or if it's very old,
-          // set it so quests might generate soon, but not immediately to avoid overwhelming.
           const loadedLastQuestTime = gameState.lastQuestGenerationTime || 0;
           if (Date.now() - loadedLastQuestTime > QUEST_GENERATION_INTERVAL * 2) {
             setLastQuestGenerationTime(Date.now() - QUEST_GENERATION_INTERVAL + (QUEST_CHECK_INTERVAL * 2) ); 
           } else {
             setLastQuestGenerationTime(loadedLastQuestTime);
+          }
+
+          // Load Neitt house move-in state
+          if (gameState.neittHouseMoveIn) {
+            const elapsedTime = Date.now() - gameState.neittHouseMoveIn.startTime;
+            if (elapsedTime >= gameState.neittHouseMoveIn.duration) {
+              setNeittsInTown((gameState.neittsInTown || 0) + (upgrades.buildHouse && !(gameState.neittsInTown > 0) ? 1:0) ); // if house was built and no one was in town, add one
+              setNeittHouseMoveIn(null);
+            } else {
+              setNeittHouseMoveIn(gameState.neittHouseMoveIn);
+              setNeittsInTown(gameState.neittsInTown || INITIAL_NEITTS_IN_TOWN);
+            }
+          } else {
+            setNeittsInTown(gameState.neittsInTown || INITIAL_NEITTS_IN_TOWN);
+            setNeittHouseMoveIn(null);
           }
 
 
@@ -997,7 +1036,7 @@ export default function HarvestClickerPage() {
             title: "Welcome Farmer!",
             description: "Starting a new game. Good luck!",
           });
-         resetGameStates(false); // This already sets gameStartTime and lastQuestGenerationTime
+         resetGameStates(false);
       }
     } catch (error) {
       console.error("Failed to load game:", error);
@@ -1008,14 +1047,14 @@ export default function HarvestClickerPage() {
       });
       resetGameStates(false);
     }
-  }, [toast, isClient, resetGameStates]);
+  }, [toast, isClient, resetGameStates, upgrades.buildHouse]); // Added upgrades.buildHouse to deps
 
   useEffect(() => {
     if (isClient) {
       loadGame();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClient]);
+  }, [isClient]); // loadGame will be memoized with its own deps
 
   useEffect(() => {
     if (isClient) {
@@ -1115,6 +1154,9 @@ export default function HarvestClickerPage() {
 
             activeQuests={activeQuests}
             onCompleteQuest={handleCompleteQuest}
+
+            neittHouseMoveIn={neittHouseMoveIn}
+            neittsInTown={neittsInTown}
           />
         </div>
         <div className="pt-4 text-center space-y-2 sm:space-y-0 sm:flex sm:justify-center sm:space-x-2">
