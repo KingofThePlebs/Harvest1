@@ -1,6 +1,6 @@
 
 import type { FC } from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import type { InventoryItem, Crop, UpgradeDefinition, UpgradesState, UpgradeId, NeittType, OwnedNeitt, Nit, OwnedNit, Farm, Quest, QuestItemRequirement } from '@/types';
 import { CROPS_DATA } from '@/config/crops'; 
@@ -8,7 +8,7 @@ import { NITS_DATA } from '@/config/nits';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIcon, Star, BarChart3, Clock, Users, DollarSign, HeartPulse, ScrollText, CheckSquare, Hammer, Home, Landmark } from 'lucide-react';
+import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIconLucide, Star, BarChart3, Clock, Users, DollarSign, HeartPulse, ScrollText, CheckSquare, Hammer, Home, Landmark } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
@@ -31,8 +31,8 @@ interface InventoryAndShopProps {
   onSelectSeedForPlanting: (seedId: string) => void;
   selectedSeedId?: string;
   currency: number;
-  upgradesData: UpgradeDefinition[];
-  purchasedUpgrades: UpgradesState;
+  upgradesData: UpgradeDefinition[]; // Will no longer contain 'buildHouse' by default
+  purchasedUpgrades: UpgradesState; // Still contains 'buildHouse' status
   onBuyUpgrade: (upgradeId: UpgradeId) => void;
   getEffectiveCropSellPrice: (basePrice: number) => number;
 
@@ -72,11 +72,13 @@ interface InventoryAndShopProps {
 
   neittHouseMoveIn: { startTime: number; duration: number; houseId: string } | null;
   neittsInTown: number;
+  onBuildHouse: () => void; // New prop for handling build house action
+  HOUSE_BUILD_COST: number; // New prop for displaying house cost
 }
 
 const tabDefinitions: TabDefinition[] = [
   { id: 'mySeeds', label: 'My Seeds', icon: Sprout },
-  { id: 'myFarm', label: 'My Farm', icon: HomeIcon },
+  { id: 'myFarm', label: 'My Farm', icon: HomeIconLucide },
   { id: 'sellMarket', label: 'Sell Market', icon: Handshake },
   { id: 'upgrades', label: 'Upgrades', icon: TrendingUp },
   { id: 'town', label: 'Town', icon: Building },
@@ -90,7 +92,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   onSelectSeedForPlanting,
   selectedSeedId,
   currency,
-  upgradesData,
+  upgradesData, // Note: This prop still exists but 'buildHouse' is filtered out before passing
   purchasedUpgrades,
   onBuyUpgrade,
   getEffectiveCropSellPrice,
@@ -122,22 +124,38 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   onCompleteQuest,
   neittHouseMoveIn,
   neittsInTown,
+  onBuildHouse,
+  HOUSE_BUILD_COST,
 }) => {
   const getCropById = (cropId: string): Crop | undefined => cropsData.find(c => c.id === cropId);
   const getNitById = (nitId: string): Nit | undefined => nitsData.find(n => n.id === nitId);
 
   const [activeTab, setActiveTab] = useState(tabDefinitions[1].id);
   const isMobile = useIsMobile();
+   const [tick, setTick] = useState(0); // Used to force re-render for progress bars
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTick(prevTick => prevTick + 1);
+    }, 500); 
+    return () => clearInterval(interval);
+  }, []);
+
 
   const farmProgressPercent = xpForNextLevel > 0 ? (farmXp / xpForNextLevel) * 100 : 0;
   const neittSlaverProgressPercent = xpForNextNeittSlaverLevel > 0 ? (neittSlaverXp / xpForNextNeittSlaverLevel) * 100 : 0;
   const traderProgressPercent = xpForNextTraderLevel > 0 ? (traderXp / xpForNextTraderLevel) * 100 : 0;
   const currentFarmName = farms.find(f => f.id === currentFarmId)?.name || "Farm";
 
+  // Filter out 'buildHouse' from general upgrades if it's still in purchasedUpgrades (for display of already bought ones if needed)
+  // Or, ensure UPGRADES_DATA itself doesn't contain 'buildHouse'
   const availableUpgrades = upgradesData.filter(upgrade => {
-    if (upgrade.id === 'unlockFarm2' || upgrade.id === 'unlockFarm3' || upgrade.id === 'buildHouse') {
+    // 'buildHouse' is no longer an "upgrade" to be bought from this list.
+    // Its purchase is handled directly in the Town > Housing section.
+    if (upgrade.id === 'unlockFarm2' || upgrade.id === 'unlockFarm3') {
         return !purchasedUpgrades[upgrade.id] && (upgrade.isUnlocked ? upgrade.isUnlocked(purchasedUpgrades) : true);
     }
+    // For other general upgrades
     return upgrade.isUnlocked ? upgrade.isUnlocked(purchasedUpgrades) : true;
   });
 
@@ -243,7 +261,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
             <CardContent className="space-y-4 pt-4">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-4">
                 <CardTitle className="text-xl text-primary-foreground/80 flex items-center gap-2">
-                  <HomeIcon className="w-6 h-6"/>My Farm Overview
+                  <HomeIconLucide className="w-6 h-6"/>My Farm Overview
                 </CardTitle>
                 {farms.length > 0 && (
                   <Select value={currentFarmId} onValueChange={onFarmChange}>
@@ -479,7 +497,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                   <span>Your Gold: {currency}</span>
               </div>
               <ul className="space-y-3">
-                {availableUpgrades.map(upgrade => {
+                {availableUpgrades.map(upgrade => { // 'buildHouse' is already filtered out from upgradesData by page.tsx
                   const UpgradeIcon = upgrade.icon;
                   const isPurchased = purchasedUpgrades[upgrade.id];
                   const canAfford = currency >= upgrade.cost;
@@ -510,7 +528,8 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                     </li>
                   );
                 })}
-                 {upgradesData.filter(u => (u.id === 'unlockFarm2' && purchasedUpgrades.unlockFarm2) || (u.id === 'unlockFarm3' && purchasedUpgrades.unlockFarm3) || (u.id === 'buildHouse' && purchasedUpgrades.buildHouse)).map(purchasedFarmUpgrade => (
+                 {/* Display purchased farm expansion upgrades if they exist */}
+                 {upgradesData.filter(u => (u.id === 'unlockFarm2' && purchasedUpgrades.unlockFarm2) || (u.id === 'unlockFarm3' && purchasedUpgrades.unlockFarm3)).map(purchasedFarmUpgrade => (
                      <li key={`${purchasedFarmUpgrade.id}-purchased`} className="flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm opacity-70">
                         <div className="flex items-center space-x-3">
                             <purchasedFarmUpgrade.icon className="w-8 h-8 text-blue-500 flex-shrink-0" />
@@ -546,11 +565,16 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
 
                 <Card className="hover:shadow-md transition-shadow">
                     <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2"><Home className="w-5 h-5" /> Housing</CardTitle>
+                        <CardTitle className="text-lg flex items-center gap-2"><HomeIconLucide className="w-5 h-5" /> Housing</CardTitle>
                     </CardHeader>
                     <CardContent>
                         {!purchasedUpgrades.buildHouse ? (
-                            <p className="text-sm text-muted-foreground">Visit the Upgrades tab to build your first house and attract new Neitt residents.</p>
+                           <>
+                             <p className="text-sm text-muted-foreground mb-2">Build your first house to attract new Neitt residents. One Neitt will move in over time once built.</p>
+                             <Button onClick={onBuildHouse} disabled={currency < HOUSE_BUILD_COST} className="w-full">
+                                 <Home className="w-4 h-4 mr-2"/>Build House (<Coins className="inline w-3 h-3 mr-0.5" />{HOUSE_BUILD_COST})
+                             </Button>
+                           </>
                         ) : neittHouseMoveIn ? (
                             <div>
                                 <p className="text-sm text-muted-foreground">A Neitt is moving in!</p>
@@ -569,7 +593,6 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                             </p>
                         )}
                     </CardContent>
-                     {/* Footer can be empty or show info if no direct action */}
                 </Card>
 
                 <Card className="hover:shadow-md transition-shadow">

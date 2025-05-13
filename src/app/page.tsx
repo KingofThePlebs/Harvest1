@@ -29,7 +29,7 @@ import {
 
 const INITIAL_CURRENCY = 20;
 const INITIAL_NUM_PLOTS = 6;
-const SAVE_GAME_KEY = 'harvestClickerSaveData_v2.2_town'; // Incremented version for new save structure
+const SAVE_GAME_KEY = 'harvestClickerSaveData_v2.3_town_house'; // Incremented version for new save structure
 
 const INITIAL_FARM_LEVEL = 1;
 const INITIAL_FARM_XP = 0;
@@ -39,6 +39,7 @@ const INITIAL_TRADER_LEVEL = 1;
 const INITIAL_TRADER_XP = 0;
 const INITIAL_NEITTS_IN_TOWN = 0;
 const NEITT_MOVE_IN_DURATION = 30 * 1000; // 30 seconds
+const HOUSE_BUILD_COST = 750;
 
 
 const generateInitialPlots = (count: number, farmId: string): PlotState[] => {
@@ -54,7 +55,7 @@ const initialUpgradesState: UpgradesState = {
   bulkDiscount: false,
   unlockFarm2: false,
   unlockFarm3: false,
-  buildHouse: false,
+  buildHouse: false, // This flag now means the house has been paid for/built
 };
 
 const initialFarmsState: Farm[] = [
@@ -135,7 +136,6 @@ export default function HarvestClickerPage() {
         toast({ title: "A New Resident!", description: "A Neitt has moved into the house." });
         clearInterval(interval);
       }
-      // Re-render to update progress bar (can be done by a dummy state update or by deriving progress in component)
     }, 1000);
 
     return () => clearInterval(interval);
@@ -169,7 +169,7 @@ export default function HarvestClickerPage() {
       if (generatedQuestData) {
         const { requirements, reward } = generatedQuestData;
         let title = template.titleGenerator();
-        let description = template.descriptionGenerator(0); // Base description
+        let description = template.descriptionGenerator(0); 
 
         if (requirements.length > 0) {
             const item1Info = requirements[0].type === 'crop' 
@@ -533,14 +533,31 @@ export default function HarvestClickerPage() {
         return [...prevFarms, { id: 'farm-3', name: 'Farm 3', plots: generateInitialPlots(INITIAL_NUM_PLOTS, 'farm-3') }];
       });
       toast({ title: "Farm 3 Unlocked!", description: `You bought ${upgradeToBuy.name} for ${upgradeToBuy.cost} gold.` });
-    } else if (upgradeId === 'buildHouse') {
-        setNeittHouseMoveIn({ startTime: Date.now(), duration: NEITT_MOVE_IN_DURATION, houseId: 'mainHouse' });
-        toast({ title: "House Construction Started!", description: `You bought ${upgradeToBuy.name} for ${upgradeToBuy.cost} gold. A Neitt will move in soon.` });
-    }
+    } 
+    // Removed buildHouse logic from here as it's handled by handleBuildHouseClick
      else {
       toast({ title: "Upgrade Purchased!", description: `You bought ${upgradeToBuy.name} for ${upgradeToBuy.cost} gold.` });
     }
   }, [currency, upgrades, toast]);
+
+
+  const handleBuildHouseClick = useCallback(() => {
+    if (upgrades.buildHouse) {
+      toast({ title: "House Already Built!", description: "You've already constructed a house." });
+      return;
+    }
+    if (currency < HOUSE_BUILD_COST) {
+      toast({ title: "Not Enough Gold!", description: `You need ${HOUSE_BUILD_COST} gold to build a house.`, variant: "destructive" });
+      return;
+    }
+
+    setCurrency(prevCurrency => prevCurrency - HOUSE_BUILD_COST);
+    setTotalMoneySpent(prev => prev + HOUSE_BUILD_COST);
+    setUpgrades(prevUpgrades => ({ ...prevUpgrades, buildHouse: true }));
+    setNeittHouseMoveIn({ startTime: Date.now(), duration: NEITT_MOVE_IN_DURATION, houseId: 'mainHouse' });
+    toast({ title: "House Construction Started!", description: `Paid ${HOUSE_BUILD_COST} gold. A Neitt will move in soon.` });
+  }, [currency, upgrades.buildHouse, toast]);
+
 
   const handleBuyNeitt = useCallback((neittId: string) => {
     const neittToBuy = NEITTS_DATA.find(s => s.id === neittId);
@@ -787,7 +804,7 @@ export default function HarvestClickerPage() {
         currency,
         harvestedInventory,
         ownedSeeds,
-        upgrades,
+        upgrades, // This will include 'buildHouse' status
         ownedNeitts,
         producedNits,
         selectedSeedFromOwnedId,
@@ -803,8 +820,8 @@ export default function HarvestClickerPage() {
         gameStartTime,
         activeQuests, 
         lastQuestGenerationTime, 
-        neittHouseMoveIn, // Save Neitt house move-in state
-        neittsInTown, // Save Neitts in town
+        neittHouseMoveIn,
+        neittsInTown,
       };
       localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
       toast({
@@ -825,7 +842,7 @@ export default function HarvestClickerPage() {
       farmLevel, farmXp, neittSlaverLevel, neittSlaverXp, traderLevel, traderXp,
       totalMoneySpent, totalCropsHarvested, totalNeittsFed, gameStartTime, 
       activeQuests, lastQuestGenerationTime, 
-      neittHouseMoveIn, neittsInTown, // Include in dependencies
+      neittHouseMoveIn, neittsInTown,
       toast, isClient
   ]);
 
@@ -837,7 +854,7 @@ export default function HarvestClickerPage() {
     setHarvestedInventory([]);
     setOwnedSeeds([]);
     setSelectedSeedFromOwnedId(undefined);
-    setUpgrades(initialUpgradesState);
+    setUpgrades(initialUpgradesState); // This resets buildHouse to false
     setOwnedNeitts([]);
     setProducedNits([]);
     setFarmLevel(INITIAL_FARM_LEVEL);
@@ -852,8 +869,8 @@ export default function HarvestClickerPage() {
     setGameStartTime(Date.now());
     setActiveQuests([]); 
     setLastQuestGenerationTime(Date.now()); 
-    setNeittHouseMoveIn(null); // Reset Neitt house move-in
-    setNeittsInTown(INITIAL_NEITTS_IN_TOWN); // Reset Neitts in town
+    setNeittHouseMoveIn(null);
+    setNeittsInTown(INITIAL_NEITTS_IN_TOWN);
     if (showToast) {
       toast({
         title: "Game Reset",
@@ -924,6 +941,8 @@ export default function HarvestClickerPage() {
           setOwnedSeeds(gameState.ownedSeeds || []);
 
           const loadedUpgrades = {...initialUpgradesState, ...gameState.upgrades};
+          // Ensure 'buildHouse' status is correctly loaded from upgrades object.
+          // No specific migration needed here as 'buildHouse' was already a boolean in upgrades.
           if ('expandFarm' in loadedUpgrades) { 
             delete (loadedUpgrades as any).expandFarm;
           }
@@ -953,18 +972,25 @@ export default function HarvestClickerPage() {
             setLastQuestGenerationTime(loadedLastQuestTime);
           }
 
-          // Load Neitt house move-in state
-          if (gameState.neittHouseMoveIn) {
-            const elapsedTime = Date.now() - gameState.neittHouseMoveIn.startTime;
-            if (elapsedTime >= gameState.neittHouseMoveIn.duration) {
-              setNeittsInTown((gameState.neittsInTown || 0) + (upgrades.buildHouse && !(gameState.neittsInTown > 0) ? 1:0) ); // if house was built and no one was in town, add one
-              setNeittHouseMoveIn(null);
-            } else {
-              setNeittHouseMoveIn(gameState.neittHouseMoveIn);
-              setNeittsInTown(gameState.neittsInTown || INITIAL_NEITTS_IN_TOWN);
+          // Load Neitt house move-in state based on gameState.upgrades.buildHouse and neittHouseMoveIn
+          if (gameState.upgrades?.buildHouse) { // Check if house was marked as built/paid for
+            if (gameState.neittHouseMoveIn) { // If move-in was in progress
+                const elapsedTime = Date.now() - gameState.neittHouseMoveIn.startTime;
+                if (elapsedTime >= gameState.neittHouseMoveIn.duration) {
+                    // Move-in completed since last save
+                    setNeittsInTown(Math.max(gameState.neittsInTown || 0, 1)); // Ensure at least 1 if house was built
+                    setNeittHouseMoveIn(null);
+                } else {
+                    // Move-in still in progress
+                    setNeittHouseMoveIn(gameState.neittHouseMoveIn);
+                    setNeittsInTown(gameState.neittsInTown || INITIAL_NEITTS_IN_TOWN);
+                }
+            } else { // House was built, but no active move-in (could be completed or just built in save)
+                setNeittsInTown(gameState.neittsInTown || (gameState.upgrades.buildHouse ? Math.max(INITIAL_NEITTS_IN_TOWN, 0) : INITIAL_NEITTS_IN_TOWN) ); // If buildHouse is true, neittsInTown should persist or be 0 if new
+                setNeittHouseMoveIn(null);
             }
-          } else {
-            setNeittsInTown(gameState.neittsInTown || INITIAL_NEITTS_IN_TOWN);
+          } else { // House was not built in save
+            setNeittsInTown(INITIAL_NEITTS_IN_TOWN);
             setNeittHouseMoveIn(null);
           }
 
@@ -1047,14 +1073,14 @@ export default function HarvestClickerPage() {
       });
       resetGameStates(false);
     }
-  }, [toast, isClient, resetGameStates, upgrades.buildHouse]); // Added upgrades.buildHouse to deps
+  }, [toast, isClient, resetGameStates]);
 
   useEffect(() => {
     if (isClient) {
       loadGame();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClient]); // loadGame will be memoized with its own deps
+  }, [isClient]); 
 
   useEffect(() => {
     if (isClient) {
@@ -1116,8 +1142,8 @@ export default function HarvestClickerPage() {
             onSelectSeedForPlanting={handleSelectSeedForPlanting}
             selectedSeedId={selectedSeedFromOwnedId}
             currency={currency}
-            upgradesData={UPGRADES_DATA}
-            purchasedUpgrades={upgrades}
+            upgradesData={UPGRADES_DATA} // This will no longer include 'buildHouse'
+            purchasedUpgrades={upgrades} // This state includes 'buildHouse'
             onBuyUpgrade={handleBuyUpgrade}
             getEffectiveCropSellPrice={getEffectiveCropSellPrice}
 
@@ -1157,6 +1183,8 @@ export default function HarvestClickerPage() {
 
             neittHouseMoveIn={neittHouseMoveIn}
             neittsInTown={neittsInTown}
+            onBuildHouse={handleBuildHouseClick} // Pass the new handler
+            HOUSE_BUILD_COST={HOUSE_BUILD_COST} // Pass the cost
           />
         </div>
         <div className="pt-4 text-center space-y-2 sm:space-y-0 sm:flex sm:justify-center sm:space-x-2">

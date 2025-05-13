@@ -1,5 +1,6 @@
+
 import type { UpgradeDefinition } from '@/types';
-import { Droplets, Award, Tag, LandPlot, PlusSquare, Home } from 'lucide-react';
+import { Droplets, Award, Tag, LandPlot, PlusSquare } from 'lucide-react'; // Removed Home icon
 
 export const UPGRADES_DATA: UpgradeDefinition[] = [
   {
@@ -39,12 +40,12 @@ export const UPGRADES_DATA: UpgradeDefinition[] = [
     icon: PlusSquare,
     isUnlocked: (upgrades) => upgrades.unlockFarm2 && !upgrades.unlockFarm3, 
   },
-  {
-    id: 'buildHouse',
-    name: 'Build a House',
-    description: 'Build a house for a Neitt to move into town. One Neitt will move in over time.',
-    cost: 750,
-    icon: Home,
-    isUnlocked: (upgrades) => !upgrades.buildHouse, // Only show if not already built
-  },
+  // { // Removed buildHouse upgrade from here
+  //   id: 'buildHouse',
+  //   name: 'Build a House',
+  //   description: 'Build a house for a Neitt to move into town. One Neitt will move in over time.',
+  //   cost: 750,
+  //   icon: Home,
+  //   isUnlocked: (upgrades) => !upgrades.buildHouse, 
+  // },
 ];
