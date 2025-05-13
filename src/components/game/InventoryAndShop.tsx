@@ -12,7 +12,7 @@ import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshak
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress'; 
-import { useState, useEffect } from 'react';
+// Removed useState and useEffect for 'tick' as it's no longer needed.
 
 
 interface InventoryAndShopProps {
@@ -62,14 +62,9 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   const getCropById = (cropId: string): Crop | undefined => cropsData.find(c => c.id === cropId); // Use passed cropsData
   const getNitById = (nitId: string): Nit | undefined => nitsData.find(n => n.id === nitId);
 
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTick(prevTick => prevTick + 1);
-    }, 500); 
-    return () => clearInterval(interval);
-  }, []);
-
+  // Removed the 'tick' state and its associated useEffect.
+  // Re-renders will happen when props like 'ownedNeitts' change,
+  // which is sufficient for updating UI elements like progress bars.
 
   return (
     <Card className="shadow-lg">
@@ -470,4 +465,5 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
 };
 
 export default InventoryAndShop;
+
 
