@@ -26,7 +26,7 @@ export interface Crop {
 }
 
 export interface PlotState {
-  id: string; // e.g. "plot-1", "plot-2" (unique within a farm)
+  id: string; // e.g. "farm-1-plot-1", "farm-2-plot-1" (unique globally or at least per farm)
   cropId?: string; // ID of the crop planted here
   plantTime?: number; // Timestamp when planted
   isHarvestable?: boolean; // Added for clarity, can be derived but useful for state
@@ -48,8 +48,8 @@ export interface UpgradesState {
   fertilizer: boolean;
   negotiationSkills: boolean;
   bulkDiscount: boolean;
-  unlockFarm2: boolean;
-  unlockFarm3: boolean;
+  unlockFarm2: boolean; // New upgrade to unlock Farm 2
+  unlockFarm3: boolean; // New upgrade to unlock Farm 3
 }
 
 // Defines the possible IDs for upgrades, derived from UpgradesState keys

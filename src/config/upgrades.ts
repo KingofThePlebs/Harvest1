@@ -27,15 +27,15 @@ export const UPGRADES_DATA: UpgradeDefinition[] = [
     id: 'unlockFarm2',
     name: 'Unlock Farm 2',
     description: 'Unlocks a new farm area with 6 plots.',
-    cost: 500, // Example cost
+    cost: 500, 
     icon: LandPlot,
-    isUnlocked: (upgrades) => !upgrades.unlockFarm2, // Only show if not already purchased
+    isUnlocked: (upgrades) => !upgrades.unlockFarm2, // Only show if Farm 2 is not yet purchased
   },
   {
     id: 'unlockFarm3',
     name: 'Unlock Farm 3',
     description: 'Unlocks another new farm area with 6 plots.',
-    cost: 2000, // Example cost
+    cost: 2000, 
     icon: PlusSquare,
     isUnlocked: (upgrades) => upgrades.unlockFarm2 && !upgrades.unlockFarm3, // Only show if Farm 2 is unlocked and Farm 3 is not
   },

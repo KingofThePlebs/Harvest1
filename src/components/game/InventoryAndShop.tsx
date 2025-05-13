@@ -6,7 +6,7 @@ import { CROPS_DATA } from '@/config/crops';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIcon, Star, ChevronDown } from 'lucide-react';
+import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIcon, Star } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
@@ -99,13 +99,10 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   const currentFarmName = farms.find(f => f.id === currentFarmId)?.name || "Farm";
 
   const availableUpgrades = upgradesData.filter(upgrade => {
-    if (upgrade.isUnlocked) {
-      return upgrade.isUnlocked(purchasedUpgrades);
+    if (upgrade.id === 'unlockFarm2' || upgrade.id === 'unlockFarm3') {
+        return !purchasedUpgrades[upgrade.id] && (upgrade.isUnlocked ? upgrade.isUnlocked(purchasedUpgrades) : true);
     }
-    // If it's a farm unlock upgrade, check if it's already purchased
-    if (upgrade.id === 'unlockFarm2' && purchasedUpgrades.unlockFarm2) return false;
-    if (upgrade.id === 'unlockFarm3' && purchasedUpgrades.unlockFarm3) return false;
-    return true;
+    return upgrade.isUnlocked ? upgrade.isUnlocked(purchasedUpgrades) : true;
   });
 
 
@@ -195,7 +192,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                 <CardTitle className="text-xl text-primary-foreground/80 flex items-center gap-2">
                   <HomeIcon className="w-6 h-6"/>My Farm Overview
                 </CardTitle>
-                {farms.length > 1 && (
+                {farms.length > 0 && ( // Check if farms array is not empty
                   <Select value={currentFarmId} onValueChange={onFarmChange}>
                     <SelectTrigger className="w-full sm:w-[180px]">
                       <SelectValue placeholder="Select Farm" />
@@ -315,7 +312,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                           return (
                             <li key={`nit-${item.nitId}`} className="flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm hover:bg-secondary/50">
                               <div className="flex items-center space-x-3">
-                                {nit.imageUrl ? (
+                                {nit.imageUrl && typeof nit.imageUrl === 'object' ? ( // Check if StaticImageData
                                   <Image src={nit.imageUrl} alt={nit.name} width={32} height={32} className="object-contain rounded-md" data-ai-hint={nit.dataAiHint}/>
                                 ) : (
                                   <NitIconComponent className="w-8 h-8 text-purple-500" />
@@ -360,7 +357,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
               <ul className="space-y-3">
                 {availableUpgrades.map(upgrade => {
                   const UpgradeIcon = upgrade.icon;
-                  const isPurchased = purchasedUpgrades[upgrade.id]; // This check might be redundant if filtered by availableUpgrades
+                  const isPurchased = purchasedUpgrades[upgrade.id];
                   const canAfford = currency >= upgrade.cost;
                   return (
                     <li key={upgrade.id} className="flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm hover:bg-secondary/50">
@@ -371,7 +368,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                           <p className="text-xs text-muted-foreground">{upgrade.description}</p>
                         </div>
                       </div>
-                      {isPurchased ? ( // Should not happen for farm unlocks if filtered correctly
+                      {isPurchased ? ( 
                         <div className="flex items-center text-green-600 font-semibold">
                           <CheckCircle className="w-5 h-5 mr-1" /> Purchased
                         </div>
@@ -389,6 +386,20 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                     </li>
                   );
                 })}
+                 {UPGRADES_DATA.filter(u => (u.id === 'unlockFarm2' && purchasedUpgrades.unlockFarm2) || (u.id === 'unlockFarm3' && purchasedUpgrades.unlockFarm3)).map(purchasedFarmUpgrade => (
+                     <li key={`${purchasedFarmUpgrade.id}-purchased`} className="flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm opacity-70">
+                        <div className="flex items-center space-x-3">
+                            <purchasedFarmUpgrade.icon className="w-8 h-8 text-blue-500 flex-shrink-0" />
+                            <div className="flex-grow">
+                            <p className="font-semibold">{purchasedFarmUpgrade.name}</p>
+                            <p className="text-xs text-muted-foreground">{purchasedFarmUpgrade.description}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center text-green-600 font-semibold">
+                          <CheckCircle className="w-5 h-5 mr-1" /> Purchased
+                        </div>
+                    </li>
+                 ))}
               </ul>
             </CardContent>
           </ScrollArea>
@@ -482,7 +493,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
 
                       return (
                         <Card key={ownedNeittInstance.instanceId} className="flex flex-col items-center p-3 bg-secondary/40 shadow-sm rounded-lg hover:shadow-md transition-shadow">
-                          {typeof neittDetails.imageUrl === 'string' ? (
+                           {typeof neittDetails.imageUrl === 'string' ? (
                              <Image src={neittDetails.imageUrl} alt={neittDetails.name} width={48} height={48} className="rounded-full mb-1 object-cover ring-2 ring-primary/50" data-ai-hint={neittDetails.dataAiHint} />
                           ) : neittDetails.imageUrl && 'src' in neittDetails.imageUrl ? ( 
                              <Image src={neittDetails.imageUrl} alt={neittDetails.name} width={48} height={48} className="rounded-full mb-1 object-cover ring-2 ring-primary/50" data-ai-hint={neittDetails.dataAiHint} />
@@ -576,3 +587,4 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
 };
 
 export default InventoryAndShop;
+

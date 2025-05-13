@@ -16,15 +16,14 @@ import { Save, Loader2 } from 'lucide-react';
 
 const INITIAL_CURRENCY = 20;
 const INITIAL_NUM_PLOTS = 6;
-// const PLOT_EXPANSION_AMOUNT = 3; // No longer used directly this way
-const SAVE_GAME_KEY = 'harvestClickerSaveData_v2'; // Consider versioning save key if structure changes drastically
+const SAVE_GAME_KEY = 'harvestClickerSaveData_v2'; 
 
 const INITIAL_FARM_LEVEL = 1;
 const INITIAL_FARM_XP = 0;
 
 const generateInitialPlots = (count: number, farmId: string): PlotState[] => {
   return Array.from({ length: count }, (_, i) => ({
-    id: `${farmId}-plot-${i + 1}`, // Ensure plot IDs are unique across farms if needed, or just unique within a farm
+    id: `${farmId}-plot-${i + 1}`, 
     isHarvestable: false,
   }));
 };
@@ -478,8 +477,8 @@ export default function HarvestClickerPage() {
     if (!isClient) return;
     try {
       const gameState = {
-        farms, // Save array of farms
-        currentFarmId, // Save current farm ID
+        farms, 
+        currentFarmId, 
         currency,
         harvestedInventory,
         ownedSeeds,
@@ -532,48 +531,42 @@ export default function HarvestClickerPage() {
       const savedData = localStorage.getItem(SAVE_GAME_KEY);
       if (savedData) {
         const gameState = JSON.parse(savedData);
-        if (gameState && typeof gameState.currency === 'number') { // Basic check
+        if (gameState && typeof gameState.currency === 'number') { 
           
-          // Load farms or initialize if old save format
+          let loadedFarms: Farm[] = initialFarmsState;
           if (Array.isArray(gameState.farms) && gameState.farms.length > 0) {
-            // Ensure plots within each farm are valid
-            const loadedFarms = gameState.farms.map((farm: Farm) => ({
+            loadedFarms = gameState.farms.map((farm: Farm) => ({
               ...farm,
-              plots: Array.isArray(farm.plots) ? farm.plots.map((p: any, idx: number) => ({ // Add type safety for p
-                  id: p.id || `${farm.id}-plot-${idx + 1}`, // Ensure ID exists
+              plots: Array.isArray(farm.plots) ? farm.plots.map((p: any, idx: number) => ({ 
+                  id: p.id || `${farm.id}-plot-${idx + 1}`, 
                   cropId: p.cropId,
                   plantTime: p.plantTime,
                   isHarvestable: p.isHarvestable || false,
               })) : generateInitialPlots(INITIAL_NUM_PLOTS, farm.id)
             }));
-            setFarms(loadedFarms);
-          } else if (Array.isArray(gameState.plots)) { // Handle old save format
+          } else if (Array.isArray(gameState.plots)) { // Handle old save format (single farm)
             const migratedFarm1Plots = gameState.plots.map((p: any, idx: number) => ({
                 id: p.id || `farm-1-plot-${idx+1}`,
                 cropId: p.cropId,
                 plantTime: p.plantTime,
                 isHarvestable: p.isHarvestable || false,
             }));
-            const migratedFarms: Farm[] = [{ id: 'farm-1', name: 'Farm 1', plots: migratedFarm1Plots }];
-            // Check old 'expandFarm' upgrade to potentially add Farm 2 for migration
+            loadedFarms = [{ id: 'farm-1', name: 'Farm 1', plots: migratedFarm1Plots }];
+            // Migrate 'expandFarm' to 'unlockFarm2'
             if (gameState.upgrades?.expandFarm && !gameState.upgrades?.unlockFarm2) {
-              migratedFarms.push({ id: 'farm-2', name: 'Farm 2', plots: generateInitialPlots(INITIAL_NUM_PLOTS, 'farm-2')});
-              // Optionally update the new upgrade state in gameState.upgrades if you want to persist it
+              loadedFarms.push({ id: 'farm-2', name: 'Farm 2', plots: generateInitialPlots(INITIAL_NUM_PLOTS, 'farm-2')});
               if(gameState.upgrades) gameState.upgrades.unlockFarm2 = true;
             }
-            setFarms(migratedFarms);
-          } else {
-            setFarms(initialFarmsState); // Default to initial farms if nothing found
           }
-
-          setCurrentFarmId(gameState.currentFarmId || (farms.length > 0 ? farms[0].id : 'farm-1'));
+          setFarms(loadedFarms);
+          setCurrentFarmId(gameState.currentFarmId || loadedFarms[0]?.id || 'farm-1');
+          
           setCurrency(gameState.currency);
           setHarvestedInventory(gameState.harvestedInventory || []);
           setOwnedSeeds(gameState.ownedSeeds || []);
           
           const loadedUpgrades = {...initialUpgradesState, ...gameState.upgrades};
-          // Remove expandFarm if it exists from old save, as it's replaced
-          if ('expandFarm' in loadedUpgrades) {
+          if ('expandFarm' in loadedUpgrades) { // Remove old expandFarm key
             delete (loadedUpgrades as any).expandFarm;
           }
           setUpgrades(loadedUpgrades);
@@ -659,7 +652,7 @@ export default function HarvestClickerPage() {
       });
       resetGameStates(false); 
     }
-  }, [toast, isClient, resetGameStates, farms]); // Added farms to dependency for initial setCurrentFarmId
+  }, [toast, isClient, resetGameStates]);
 
   useEffect(() => {
     if (isClient) {
@@ -679,14 +672,6 @@ export default function HarvestClickerPage() {
       };
     }
   }, [isClient, saveGame]); 
-
-  // This useEffect for plot expansion is no longer needed as farm expansion is handled by specific upgrades.
-  // useEffect(() => {
-  //   if (isClient) {
-  //       const expectedPlotCount = upgrades.expandFarm ? INITIAL_NUM_PLOTS + PLOT_EXPANSION_AMOUNT : INITIAL_NUM_PLOTS;
-  //       // ... logic to adjust plot count for the current farm ...
-  //   }
-  // }, [isClient, upgrades.expandFarm, plots.length]); // This needs to be removed or rethought
 
 
   if (!isClient) {
