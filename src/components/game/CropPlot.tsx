@@ -165,12 +165,12 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
                     alt={plantedCrop.name}
                     width={64} // Increased base width for PC, will be scaled by className
                     height={64} // Increased base height for PC
-                    className="object-contain rounded-md w-10 h-10 sm:w-16 sm:h-16" // mobile w-10 h-10, PC sm:w-16 sm:h-16
+                    className="object-contain rounded-md w-10 h-10 sm:w-32 sm:h-32" // mobile w-10 h-10, PC sm:w-16 sm:h-16
                     data-ai-hint={plantedCrop.dataAiHintFarmPlot || plantedCrop.dataAiHint}
                   />
                 ) : CropIconComponent ? (
-                  <CropIconComponent className="w-10 h-10 sm:w-16 sm:h-16 text-green-600" /> // mobile w-10 h-10, PC sm:w-16 sm:h-16
-                ) : <Leaf className="w-10 h-10 sm:w-16 sm:h-16 text-gray-400" /> } {/* mobile w-10 h-10, PC sm:w-16 sm:h-16 */}
+                  <CropIconComponent className="w-10 h-10 sm:w-32 sm:h-32 text-green-600" /> // mobile w-10 h-10, PC sm:w-16 sm:h-16
+                ) : <Leaf className="w-10 h-10 sm:w-32 sm:h-32 text-gray-400" /> } {/* mobile w-10 h-10, PC sm:w-16 sm:h-16 */}
                 {!isReadyToHarvest && (
                   <Progress value={progress} className="w-3/4 h-2 sm:h-3 transition-all duration-100" />
                 )}
@@ -181,7 +181,7 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
                 )}
               </div>
             ) : (
-              <Leaf className="w-10 h-10 sm:w-16 sm:h-16 text-muted-foreground opacity-50" /> // mobile w-10 h-10, PC sm:w-16 sm:h-16
+              <Leaf className="w-10 h-10 sm:w-32 sm:h-32 text-muted-foreground opacity-50" /> // mobile w-10 h-10, PC sm:w-16 sm:h-16
             )}
           </CardContent>
           <CardFooter className="p-2 pb-3 sm:pb-4 w-full">

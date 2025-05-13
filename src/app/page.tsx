@@ -13,7 +13,7 @@ import SeedShopPanel from '@/components/game/SeedShopPanel';
 import InventoryAndShop from '@/components/game/InventoryAndShop';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
-import { RefreshCcw, Save, Trash2, Loader2 } from 'lucide-react';
+import { Save, Trash2, Loader2 } from 'lucide-react';
 
 const INITIAL_CURRENCY = 20;
 const INITIAL_NUM_PLOTS = 6;
@@ -570,10 +570,6 @@ export default function HarvestClickerPage() {
       description: "Your saved game progress has been removed. The game has been reset.",
     });
   };
-
-  const resetGame = () => {
-    resetGameStates(true);
-  };
   
 
   useEffect(() => {
@@ -680,9 +676,6 @@ export default function HarvestClickerPage() {
         <div className="pt-4 text-center space-y-2 sm:space-y-0 sm:space-x-2">
             <Button onClick={saveGame} variant="outline" className="flex items-center gap-2 mx-auto sm:mx-0 sm:inline-flex">
                 <Save className="w-4 h-4" /> Save Game
-            </Button>
-            <Button onClick={resetGame} variant="outline" className="flex items-center gap-2 mx-auto sm:mx-0 sm:inline-flex">
-                <RefreshCcw className="w-4 h-4" /> Reset Game
             </Button>
             <Button onClick={clearSaveData} variant="destructive" className="flex items-center gap-2 mx-auto sm:mx-0 sm:inline-flex">
                 <Trash2 className="w-4 h-4" /> Clear Saved Game Data
