@@ -7,7 +7,7 @@ import { CROPS_DATA } from '@/config/crops';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIcon, Star, BarChart3, Clock, Users, DollarSign } from 'lucide-react';
+import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIcon, Star, BarChart3, Clock, Users, DollarSign, HeartPulse } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
@@ -64,6 +64,7 @@ interface InventoryAndShopProps {
   // Statistics
   totalMoneySpent: number;
   totalCropsHarvested: number;
+  totalNeittsFed: number;
   formattedGameTime: string;
 }
 
@@ -109,6 +110,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   onFarmChange,
   totalMoneySpent,
   totalCropsHarvested,
+  totalNeittsFed,
   formattedGameTime,
 }) => {
   const getCropById = (cropId: string): Crop | undefined => cropsData.find(c => c.id === cropId);
@@ -312,6 +314,13 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                     Crops Harvested:
                   </div>
                   <span className="font-semibold">{totalCropsHarvested}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <HeartPulse className="w-4 h-4 text-red-500" />
+                    Neitts Fed:
+                  </div>
+                  <span className="font-semibold">{totalNeittsFed}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2 text-muted-foreground">
