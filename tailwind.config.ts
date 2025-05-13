@@ -98,11 +98,17 @@ export default {
           "from": { backgroundPosition: "200% 0" },
           "to": { backgroundPosition: "-200% 0" },
         },
+        'harvest-effect': {
+          '0%': { transform: 'scale(1)', opacity: '1' },
+          '50%': { transform: 'scale(1.1)', opacity: '0.7' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
         "shine": "shine 2s linear infinite",
+        'harvest-effect': 'harvest-effect 0.3s ease-out',
   		}
   	}
   },

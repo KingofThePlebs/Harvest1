@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Leaf, Zap } from 'lucide-react'; 
-// Removed ParticleBurst import
+import { cn } from '@/lib/utils';
+
 
 interface CropPlotProps {
   plot: PlotState;
@@ -23,8 +24,9 @@ interface CropPlotProps {
 const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId, getEffectiveCropGrowTime }) => {
   const [progress, setProgress] = useState(0);
   const [isReadyToHarvest, setIsReadyToHarvest] = useState(plot.isHarvestable || false);
-  // Removed particleBurstState and related refs/handlers
   const plotCardRef = useRef<HTMLDivElement>(null);
+  const [showHarvestEffect, setShowHarvestEffect] = useState(false);
+  const effectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
 
   const plantedCrop = useMemo(() => {
@@ -76,13 +78,30 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
       if (intervalId) clearInterval(intervalId);
     };
   }, [plantedCrop, plot.plantTime, isReadyToHarvest, effectiveGrowTime]);
+  
+  useEffect(() => {
+    // Cleanup timeout on unmount
+    return () => {
+      if (effectTimeoutRef.current) {
+        clearTimeout(effectTimeoutRef.current);
+      }
+    };
+  }, []);
+
 
   const handlePlotClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (isReadyToHarvest && plantedCrop) {
-      // Removed particle burst logic
       onHarvest(plot.id, plantedCrop.id);
+      setShowHarvestEffect(true);
       setIsReadyToHarvest(false); 
       setProgress(0);
+
+      if (effectTimeoutRef.current) {
+        clearTimeout(effectTimeoutRef.current);
+      }
+      effectTimeoutRef.current = setTimeout(() => {
+        setShowHarvestEffect(false);
+      }, 300); // Duration of the animation in ms
     } else if (!plantedCrop && selectedSeedId) {
       onPlant(plot.id); 
     }
@@ -102,7 +121,6 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
     currentStageImageUrl = typeof imgData === 'string' ? imgData : imgData?.src;
   }
 
-  // Removed handleParticleAnimationComplete callback
 
   return (
     <>
@@ -114,7 +132,10 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
       >
         <Card 
           ref={plotCardRef}
-          className="absolute inset-0 w-full h-full flex flex-col items-center justify-center shadow-lg hover:shadow-xl transition-shadow duration-300 bg-background/70"
+          className={cn(
+            "absolute inset-0 w-full h-full flex flex-col items-center justify-center shadow-lg hover:shadow-xl transition-shadow duration-300 bg-background/70",
+            showHarvestEffect && "animate-harvest-effect"
+          )}
         >
           <CardHeader className="p-2 pt-4 text-center">
             <CardTitle className="text-sm truncate">{plantedCrop?.name || 'Empty Plot'}</CardTitle>
@@ -159,7 +180,6 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
           </CardFooter>
         </Card>
       </div>
-      {/* Removed ParticleBurst component instance */}
     </>
   );
 };
