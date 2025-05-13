@@ -1,8 +1,7 @@
-
 "use client";
 
 import type { FC } from 'react';
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'; // Added useCallback
 import Image from 'next/image';
 import type { PlotState } from '@/types';
 import { CROPS_DATA } from '@/config/crops';
@@ -110,6 +109,10 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
     currentStageImageUrl = typeof imgData === 'string' ? imgData : imgData?.src;
   }
 
+  const handleParticleAnimationComplete = useCallback(() => {
+    setParticleBurstState(null);
+  }, []);
+
 
   return (
     <>
@@ -171,7 +174,7 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
           key={particleBurstState.key}
           originX={particleBurstState.x}
           originY={particleBurstState.y}
-          onAnimationComplete={() => setParticleBurstState(null)}
+          onAnimationComplete={handleParticleAnimationComplete}
         />
       )}
     </>
