@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -12,7 +13,18 @@ import SeedShopPanel from '@/components/game/SeedShopPanel';
 import InventoryAndShop from '@/components/game/InventoryAndShop';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
-import { Save, Loader2 } from 'lucide-react';
+import { Save, Loader2, Trash2, AlertTriangle } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const INITIAL_CURRENCY = 20;
 const INITIAL_NUM_PLOTS = 6;
@@ -566,6 +578,26 @@ export default function HarvestClickerPage() {
     }
   }, [toast]);
 
+  const clearSavedData = useCallback(() => {
+    if (!isClient) return;
+    try {
+      localStorage.removeItem(SAVE_GAME_KEY);
+      resetGameStates(false); // Reset state without showing "Game Reset" toast
+      toast({
+        title: "Saved Data Cleared",
+        description: "All your saved progress has been removed. Starting a fresh game.",
+      });
+    } catch (error) {
+      console.error("Failed to clear saved data:", error);
+      toast({
+        title: "Error Clearing Data",
+        description: "Could not clear saved data. See console for details.",
+        variant: "destructive",
+      });
+    }
+  }, [isClient, resetGameStates, toast]);
+
+
   const loadGame = useCallback(() => {
     if (!isClient) return;
     try {
@@ -801,10 +833,37 @@ export default function HarvestClickerPage() {
             formattedGameTime={formattedGameTime}
           />
         </div>
-        <div className="pt-4 text-center space-y-2 sm:space-y-0 sm:space-x-2">
-            <Button onClick={saveGame} variant="outline" className="flex items-center gap-2 mx-auto sm:mx-0 sm:inline-flex">
+        <div className="pt-4 text-center space-y-2 sm:space-y-0 sm:flex sm:justify-center sm:space-x-2">
+            <Button onClick={saveGame} variant="outline" className="flex items-center gap-2 mx-auto sm:mx-0 mb-2 sm:mb-0">
                 <Save className="w-4 h-4" /> Save Game
             </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="flex items-center gap-2 mx-auto sm:mx-0">
+                  <Trash2 className="w-4 h-4" /> Clear Saved Data
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center gap-2">
+                    <AlertTriangle className="text-destructive" /> Are you absolutely sure?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete your
+                    saved game progress from this browser.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={clearSavedData}
+                    className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                  >
+                    Yes, delete my data
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
         </div>
       </main>
       <footer className="text-center p-4 text-sm text-muted-foreground">
@@ -813,3 +872,4 @@ export default function HarvestClickerPage() {
     </div>
   );
 }
+
