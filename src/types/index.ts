@@ -50,7 +50,7 @@ export interface UpgradesState {
   bulkDiscount: boolean;
   unlockFarm2: boolean;
   unlockFarm3: boolean;
-  buildHouse: boolean; // Added for building a house
+  // buildHouse: boolean; // Removed, housing is now a direct action
 }
 
 // Defines the possible IDs for upgrades, derived from UpgradesState keys
@@ -151,4 +151,5 @@ export interface OwnedProductionBuilding {
   typeId: string; // Corresponds to ProductionBuildingType.id
   name: string; // Can be user-defined or default (e.g. "Factory 1")
   assignedNeittInstanceIds: string[]; // List of OwnedNeitt instance IDs assigned here
+  lastProductionCycleTime?: number; // Timestamp when the last production cycle started for this building
 }

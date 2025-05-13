@@ -40,12 +40,4 @@ export const UPGRADES_DATA: UpgradeDefinition[] = [
     icon: PlusSquare,
     isUnlocked: (upgrades) => upgrades.unlockFarm2 && !upgrades.unlockFarm3, 
   },
-  // { // Removed buildHouse upgrade from here
-  //   id: 'buildHouse',
-  //   name: 'Build a House',
-  //   description: 'Build a house for a Neitt to move into town. One Neitt will move in over time.',
-  //   cost: 750,
-  //   icon: Home,
-  //   isUnlocked: (upgrades) => !upgrades.buildHouse, 
-  // },
 ];
