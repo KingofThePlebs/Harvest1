@@ -9,6 +9,7 @@ export interface Crop {
   sellPrice: number;
   seedPrice: number; // Cost to buy the seed
   icon?: LucideIcon; // For crops that use Lucide icons as a fallback
+  xpYield?: number; // XP gained from harvesting this crop
 
   // Specific images for different contexts, now using StaticImageData
   seedShopImageUrl?: StaticImageData;
@@ -94,4 +95,3 @@ export interface OwnedNit {
   nitId: string;
   quantity: number;
 }
-

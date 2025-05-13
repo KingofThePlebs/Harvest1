@@ -7,7 +7,7 @@ import { CROPS_DATA } from '@/config/crops';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone } from 'lucide-react';
+import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIcon, Star } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
@@ -37,10 +37,15 @@ interface InventoryAndShopProps {
   onSellNit: (nitId: string, quantity: number) => void;
 
   cropsData: Crop[];
+
+  farmLevel: number;
+  farmXp: number;
+  xpForNextLevel: number;
 }
 
 const tabDefinitions: TabDefinition[] = [
   { id: 'mySeeds', label: 'My Seeds', icon: Sprout },
+  { id: 'myFarm', label: 'My Farm', icon: HomeIcon },
   { id: 'sellMarket', label: 'Sell Market', icon: Handshake },
   { id: 'upgrades', label: 'Upgrades', icon: TrendingUp },
   { id: 'town', label: 'Town', icon: Building },
@@ -66,12 +71,17 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   nitsData,
   onSellNit,
   cropsData,
+  farmLevel,
+  farmXp,
+  xpForNextLevel,
 }) => {
   const getCropById = (cropId: string): Crop | undefined => cropsData.find(c => c.id === cropId);
   const getNitById = (nitId: string): Nit | undefined => nitsData.find(n => n.id === nitId);
 
   const [activeTab, setActiveTab] = useState(tabDefinitions[0].id);
   const isMobile = useIsMobile();
+
+  const farmProgressPercent = xpForNextLevel > 0 ? (farmXp / xpForNextLevel) * 100 : 0;
 
   return (
     <Card className="shadow-lg">
@@ -86,7 +96,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
           </div>
         ) : (
           <CardHeader className="pb-0 hidden md:block">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6"> {/* Adjusted to 6 columns */}
               {tabDefinitions.map(tab => (
                 <TabsTrigger key={tab.id} value={tab.id} className="flex items-center gap-2">
                   <tab.icon className="w-4 h-4" />{tab.label}
@@ -151,6 +161,46 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
             </CardContent>
           </ScrollArea>
         </TabsContent>
+
+        <TabsContent value="myFarm">
+          <ScrollArea className="h-[300px] sm:h-[400px] lg:max-h-[calc(60vh-100px)]">
+            <CardContent className="space-y-4 pt-4">
+              <CardTitle className="text-xl text-primary-foreground/80 flex items-center gap-2">
+                <HomeIcon className="w-6 h-6"/>My Farm Overview
+              </CardTitle>
+              <CardDescription>Track your farm's progress and level.</CardDescription>
+              
+              <div className="space-y-3 p-4 bg-secondary/20 rounded-md shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-lg font-semibold">
+                    <Star className="w-5 h-5 text-primary" />
+                    Farm Level:
+                  </div>
+                  <span className="text-lg font-bold text-primary">{farmLevel}</span>
+                </div>
+                
+                <Separator />
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium text-muted-foreground">Experience Points (XP):</span>
+                    <span className="text-sm font-semibold">{farmXp} / {xpForNextLevel}</span>
+                  </div>
+                  <Progress value={farmProgressPercent} className="w-full h-3" />
+                  <p className="text-xs text-muted-foreground mt-1 text-center">
+                    {xpForNextLevel - farmXp} XP to next level
+                  </p>
+                </div>
+              </div>
+
+              <CardDescription className="mt-4 text-sm">
+                Gain XP by harvesting crops. Leveling up your farm might unlock new features or bonuses in the future!
+              </CardDescription>
+
+            </CardContent>
+          </ScrollArea>
+        </TabsContent>
+
 
         <TabsContent value="sellMarket">
           <ScrollArea className="h-[300px] sm:h-[400px] lg:max-h-[calc(60vh-100px)]">
@@ -361,7 +411,10 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
 
                       if (ownedNeittInstance.nitsLeftToProduce > 0 && ownedNeittInstance.initialNitsForCycle > 0) {
                         const elapsedTime = Date.now() - ownedNeittInstance.lastProductionCycleStartTime;
-                        productionProgress = Math.min(100, (elapsedTime / neittDetails.productionTime) * 100);
+                        // Calculate progress for the current Nit being produced
+                        const progressForCurrentNit = Math.min(100, (elapsedTime / neittDetails.productionTime) * 100);
+                        productionProgress = progressForCurrentNit; // Show progress for one Nit at a time
+
                         const nitsProducedSoFar = ownedNeittInstance.initialNitsForCycle - ownedNeittInstance.nitsLeftToProduce;
                         statusText = `Producing Nit ${nitsProducedSoFar + 1}/${ownedNeittInstance.initialNitsForCycle}`;
                       }
@@ -390,7 +443,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                         <Card key={ownedNeittInstance.instanceId} className="flex flex-col items-center p-3 bg-secondary/40 shadow-sm rounded-lg hover:shadow-md transition-shadow">
                           {typeof neittDetails.imageUrl === 'string' ? (
                              <Image src={neittDetails.imageUrl} alt={neittDetails.name} width={48} height={48} className="rounded-full mb-1 object-cover ring-2 ring-primary/50" data-ai-hint={neittDetails.dataAiHint} />
-                          ) : neittDetails.imageUrl ? ( 
+                          ) : neittDetails.imageUrl && 'src' in neittDetails.imageUrl ? ( 
                              <Image src={neittDetails.imageUrl} alt={neittDetails.name} width={48} height={48} className="rounded-full mb-1 object-cover ring-2 ring-primary/50" data-ai-hint={neittDetails.dataAiHint} />
                           ) : NeittIcon ? (
                             <NeittIcon className="w-12 h-12 mb-1" style={{ color: neittDetails.color || 'hsl(var(--primary))' }} />
@@ -444,7 +497,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                         <div className="flex items-center space-x-3">
                            {typeof neitt.imageUrl === 'string' ? (
                              <Image src={neitt.imageUrl} alt={neitt.name} width={40} height={40} className="rounded-md object-cover" data-ai-hint={neitt.dataAiHint}/>
-                           ) : neitt.imageUrl ? ( 
+                           ) : neitt.imageUrl && 'src' in neitt.imageUrl ? ( 
                              <Image src={neitt.imageUrl} alt={neitt.name} width={40} height={40} className="rounded-md object-cover" data-ai-hint={neitt.dataAiHint}/>
                           ) : NeittShopIcon ? (
                             <NeittShopIcon className="w-10 h-10" style={{ color: neitt.color || 'hsl(var(--primary))' }}/>

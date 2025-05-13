@@ -20,6 +20,9 @@ const INITIAL_NUM_PLOTS = 6;
 const PLOT_EXPANSION_AMOUNT = 3;
 const SAVE_GAME_KEY = 'harvestClickerSaveData';
 
+const INITIAL_FARM_LEVEL = 1;
+const INITIAL_FARM_XP = 0;
+
 const generateInitialPlots = (count: number): PlotState[] => {
   return Array.from({ length: count }, (_, i) => ({
     id: `plot-${i + 1}`,
@@ -47,10 +50,18 @@ export default function HarvestClickerPage() {
   const [ownedNeitts, setOwnedNeitts] = useState<OwnedNeitt[]>([]);
   const [producedNits, setProducedNits] = useState<OwnedNit[]>([]);
 
+  const [farmLevel, setFarmLevel] = useState<number>(INITIAL_FARM_LEVEL);
+  const [farmXp, setFarmXp] = useState<number>(INITIAL_FARM_XP);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setIsClient(true);
     }
+  }, []);
+
+  const calculateXpToNextLevel = useCallback((level: number): number => {
+    // Example: Level 1 -> 50 XP, Level 2 -> 100 XP, Level 3 -> 150 XP
+    return 50 + (level - 1) * 50;
   }, []);
 
   // Neitt Production Logic
@@ -59,13 +70,13 @@ export default function HarvestClickerPage() {
 
     const productionInterval = setInterval(() => {
       const now = Date.now();
-      let neittStateChangedDuringTick = false; // Renamed to avoid conflict
+      let neittStateChangedDuringTick = false; 
       const newlyProducedNitsThisTick = new Map<string, number>();
 
       setOwnedNeitts(prevOwnedNeitts => {
         const nextOwnedNeitts = prevOwnedNeitts.map(neittInstance => {
           if (neittInstance.nitsLeftToProduce <= 0) {
-            return neittInstance; // Hungry or cycle complete, do nothing until fed
+            return neittInstance; 
           }
 
           const neittType = NEITTS_DATA.find(nt => nt.id === neittInstance.neittTypeId);
@@ -74,7 +85,6 @@ export default function HarvestClickerPage() {
           const elapsedTime = now - neittInstance.lastProductionCycleStartTime;
 
           if (elapsedTime >= neittType.productionTime) {
-            // Produce one Nit for this instance
             const currentAmount = newlyProducedNitsThisTick.get(neittType.producesNitId) || 0;
             newlyProducedNitsThisTick.set(neittType.producesNitId, currentAmount + 1);
             
@@ -89,7 +99,6 @@ export default function HarvestClickerPage() {
           }
           return neittInstance;
         });
-        // Only trigger a re-render if something actually changed in ownedNeitts
         return neittStateChangedDuringTick ? nextOwnedNeitts : prevOwnedNeitts; 
       });
 
@@ -107,7 +116,7 @@ export default function HarvestClickerPage() {
           return updatedGlobalNits.filter(n => n.quantity > 0);
         });
       }
-    }, 1000); // Check every second
+    }, 1000); 
 
     return () => clearInterval(productionInterval);
   }, [isClient]);
@@ -206,7 +215,6 @@ export default function HarvestClickerPage() {
         return updatedSeeds.filter(s => s.quantity > 0);
     });
 
-    // setSelectedSeedFromOwnedId(undefined); // Keep selected seed after planting as per user request
     toast({
       title: `${cropToPlant.name} planted!`,
       description: `One ${cropToPlant.name} seed used from inventory. Watch it grow.`,
@@ -237,7 +245,30 @@ export default function HarvestClickerPage() {
       title: `Harvested ${crop.name}!`,
       description: "It's now in your sell market inventory.",
     });
-  }, [toast]);
+
+    // XP gain and leveling up
+    const gainedXp = crop.xpYield || 0;
+    if (gainedXp > 0) {
+      setFarmXp(prevXp => {
+        let newXp = prevXp + gainedXp;
+        let currentLevel = farmLevel;
+        let xpNeededForNext = calculateXpToNextLevel(currentLevel);
+
+        while (newXp >= xpNeededForNext) {
+          currentLevel++;
+          newXp -= xpNeededForNext;
+          xpNeededForNext = calculateXpToNextLevel(currentLevel);
+          toast({
+            title: "Farm Level Up!",
+            description: `Congratulations! Your farm reached level ${currentLevel}!`,
+            variant: "default" 
+          });
+        }
+        setFarmLevel(currentLevel); // Update level directly here if it changed
+        return newXp;
+      });
+    }
+  }, [toast, farmLevel, farmXp, calculateXpToNextLevel]);
 
   const handleSellCrop = useCallback((cropIdToSell: string, quantity: number) => {
     const crop = CROPS_DATA.find(c => c.id === cropIdToSell);
@@ -285,10 +316,6 @@ export default function HarvestClickerPage() {
 
     setCurrency(prevCurrency => prevCurrency - upgradeToBuy.cost);
     setUpgrades(prevUpgrades => ({ ...prevUpgrades, [upgradeId]: true }));
-
-    if (upgradeId === 'expandFarm') {
-      // Plot expansion logic is handled by a useEffect now to ensure consistency
-    }
 
     toast({ title: "Upgrade Purchased!", description: `You bought ${upgradeToBuy.name} for ${upgradeToBuy.cost} gold.` });
 
@@ -354,7 +381,6 @@ export default function HarvestClickerPage() {
       return;
     }
     
-    // All checks passed, proceed with state updates
     setHarvestedInventory(prevInventory =>
       prevInventory
         .map(item =>
@@ -430,6 +456,8 @@ export default function HarvestClickerPage() {
         ownedNeitts, 
         producedNits,
         selectedSeedFromOwnedId, 
+        farmLevel,
+        farmXp,
       };
       localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
       toast({
@@ -444,7 +472,7 @@ export default function HarvestClickerPage() {
         variant: "destructive",
       });
     }
-  }, [plots, currency, harvestedInventory, ownedSeeds, upgrades, ownedNeitts, producedNits, selectedSeedFromOwnedId, toast, isClient]);
+  }, [plots, currency, harvestedInventory, ownedSeeds, upgrades, ownedNeitts, producedNits, selectedSeedFromOwnedId, farmLevel, farmXp, toast, isClient]);
 
   const resetGameStates = useCallback((showToast: boolean = true) => {
     setPlots(generateInitialPlots(INITIAL_NUM_PLOTS));
@@ -455,6 +483,8 @@ export default function HarvestClickerPage() {
     setUpgrades(initialUpgradesState);
     setOwnedNeitts([]);
     setProducedNits([]);
+    setFarmLevel(INITIAL_FARM_LEVEL);
+    setFarmXp(INITIAL_FARM_XP);
     if (showToast) {
       toast({
         title: "Game Reset",
@@ -479,6 +509,8 @@ export default function HarvestClickerPage() {
           setHarvestedInventory(gameState.harvestedInventory || []);
           setOwnedSeeds(gameState.ownedSeeds || []);
           setUpgrades(finalUpgrades); 
+          setFarmLevel(gameState.farmLevel || INITIAL_FARM_LEVEL);
+          setFarmXp(gameState.farmXp || INITIAL_FARM_XP);
           
           let loadedOwnedNeittsFromState: any[] = gameState.ownedNeitts || [];
           const processedNeitts: OwnedNeitt[] = [];
@@ -576,7 +608,8 @@ export default function HarvestClickerPage() {
     if (isClient) {
       loadGame();
     }
-  }, [isClient, loadGame]); 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isClient]); // loadGame is memoized, but to be safe, only run on client mount
 
   useEffect(() => {
     if (isClient) {
@@ -626,6 +659,8 @@ export default function HarvestClickerPage() {
     );
   }
 
+  const xpForNextLevel = calculateXpToNextLevel(farmLevel);
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <GameHeader currency={currency} />
@@ -671,14 +706,15 @@ export default function HarvestClickerPage() {
             onSellNit={handleSellNit}
             
             cropsData={CROPS_DATA} 
+
+            farmLevel={farmLevel}
+            farmXp={farmXp}
+            xpForNextLevel={xpForNextLevel}
           />
         </div>
         <div className="pt-4 text-center space-y-2 sm:space-y-0 sm:space-x-2">
             <Button onClick={saveGame} variant="outline" className="flex items-center gap-2 mx-auto sm:mx-0 sm:inline-flex">
                 <Save className="w-4 h-4" /> Save Game
-            </Button>
-            <Button onClick={clearSaveData} variant="destructive" className="flex items-center gap-2 mx-auto sm:mx-0 sm:inline-flex">
-                <Trash2 className="w-4 h-4" /> Clear Saved Game Data
             </Button>
         </div>
       </main>

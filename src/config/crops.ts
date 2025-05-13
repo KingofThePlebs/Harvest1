@@ -11,21 +11,6 @@ import carrotPlot3Img from '@/images/crops/carrot/plant3.png';
 import carrotPlot4Img from '@/images/crops/carrot/plant4.png';
 import carrotPlot5Img from '@/images/crops/carrot/plant5.png';
 
-// Radish Images - Removed
-// Wheat Images - Removed
-// Potato Images - Removed
-// Onion Images - Removed
-// Tomato Images - Removed
-// Broccoli Images - Removed
-// Cucumber Images - Removed
-// Garlic Images - Removed
-// Strawberry Images - Removed
-// Bell Pepper Images - Removed
-// Corn Images - Removed
-// Cabbage Images - Removed
-// Eggplant Images - Removed
-// Pumpkin Images - Removed
-
 
 export const CROPS_DATA: Crop[] = [
   {
@@ -35,6 +20,7 @@ export const CROPS_DATA: Crop[] = [
     sellPrice: 5,
     seedPrice: 1,
     icon: Carrot,
+    xpYield: 10, // Carrots give 10 XP per harvest
     seedShopImageUrl: carrotSeedImg, 
     dataAiHintSeedShop: 'carrot seedpacket',
     harvestedCropImageUrl: carrotHarvestedImg, 
