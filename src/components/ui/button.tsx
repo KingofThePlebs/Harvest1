@@ -1,3 +1,4 @@
+
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
@@ -40,14 +41,54 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, onClick: originalOnClick, children, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
+    
+    const [isEffectActive, setIsEffectActive] = React.useState(false);
+    const effectTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+    const handleClick = React.useCallback(
+      (event: React.MouseEvent<HTMLButtonElement>) => {
+        setIsEffectActive(true);
+        if (effectTimeoutRef.current) {
+          clearTimeout(effectTimeoutRef.current);
+        }
+        effectTimeoutRef.current = setTimeout(() => {
+          setIsEffectActive(false);
+        }, 300); // Corresponds to the 'harvest-effect' animation duration
+
+        if (originalOnClick) {
+          originalOnClick(event);
+        }
+      },
+      [originalOnClick]
+    );
+
+    React.useEffect(() => {
+      // Cleanup timeout on component unmount
+      return () => {
+        if (effectTimeoutRef.current) {
+          clearTimeout(effectTimeoutRef.current);
+        }
+      };
+    }, []);
+
+    const finalClassName = cn(
+      buttonVariants({ variant, size, className }),
+      isEffectActive && "animate-harvest-effect"
+    );
+    
+    // For asChild, Slot will pass down props including onClick and className to its child.
+    // So, the wrapped handleClick and the animated className will be applied to the actual child element.
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={finalClassName}
         ref={ref}
+        onClick={handleClick}
         {...props}
-      />
+      >
+        {children}
+      </Comp>
     )
   }
 )
