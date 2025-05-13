@@ -2,12 +2,13 @@
 import type { FC } from 'react';
 import { useState } from 'react';
 import Image from 'next/image';
-import type { InventoryItem, Crop, UpgradeDefinition, UpgradesState, UpgradeId, NeittType, OwnedNeitt, Nit, OwnedNit, Farm } from '@/types';
-import { CROPS_DATA } from '@/config/crops';
+import type { InventoryItem, Crop, UpgradeDefinition, UpgradesState, UpgradeId, NeittType, OwnedNeitt, Nit, OwnedNit, Farm, Quest, QuestItemRequirement } from '@/types';
+import { CROPS_DATA } from '@/config/crops'; // Keep this if cropsData prop is removed and used directly
+import { NITS_DATA } from '@/config/nits'; // Keep this if nitsData prop is removed
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIcon, Star, BarChart3, Clock, Users, DollarSign, HeartPulse } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIcon, Star, BarChart3, Clock, Users, DollarSign, HeartPulse, ScrollText, CheckSquare } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
@@ -61,11 +62,13 @@ interface InventoryAndShopProps {
   currentFarmId: string;
   onFarmChange: (farmId: string) => void;
 
-  // Statistics
   totalMoneySpent: number;
   totalCropsHarvested: number;
   totalNeittsFed: number;
   formattedGameTime: string;
+
+  activeQuests: Quest[];
+  onCompleteQuest: (questId: string) => void;
 }
 
 const tabDefinitions: TabDefinition[] = [
@@ -73,7 +76,7 @@ const tabDefinitions: TabDefinition[] = [
   { id: 'myFarm', label: 'My Farm', icon: HomeIcon },
   { id: 'sellMarket', label: 'Sell Market', icon: Handshake },
   { id: 'upgrades', label: 'Upgrades', icon: TrendingUp },
-  { id: 'town', label: 'Town', icon: Building },
+  { id: 'town', label: 'Town', icon: Building }, // Icon for Quest Square
   { id: 'neittFarm', label: 'Neitt Farm', icon: NeittIconLucide },
 ];
 
@@ -95,7 +98,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   producedNits,
   nitsData,
   onSellNit,
-  cropsData,
+  cropsData, // Make sure this is passed if used directly for quest item names
   farmLevel,
   farmXp,
   xpForNextLevel,
@@ -112,11 +115,13 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   totalCropsHarvested,
   totalNeittsFed,
   formattedGameTime,
+  activeQuests,
+  onCompleteQuest,
 }) => {
   const getCropById = (cropId: string): Crop | undefined => cropsData.find(c => c.id === cropId);
   const getNitById = (nitId: string): Nit | undefined => nitsData.find(n => n.id === nitId);
 
-  const [activeTab, setActiveTab] = useState(tabDefinitions[1].id); // Default to My Farm
+  const [activeTab, setActiveTab] = useState(tabDefinitions[1].id);
   const isMobile = useIsMobile();
 
   const farmProgressPercent = xpForNextLevel > 0 ? (farmXp / xpForNextLevel) * 100 : 0;
@@ -130,6 +135,23 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
     }
     return upgrade.isUnlocked ? upgrade.isUnlocked(purchasedUpgrades) : true;
   });
+
+  const canCompleteQuest = (quest: Quest): boolean => {
+    for (const req of quest.requirements) {
+      if (req.type === 'crop') {
+        const itemInInventory = harvestedInventory.find(item => item.cropId === req.itemId);
+        if (!itemInInventory || itemInInventory.quantity < req.quantity) {
+          return false;
+        }
+      } else if (req.type === 'nit') {
+        const itemInInventory = producedNits.find(item => item.nitId === req.itemId);
+        if (!itemInInventory || itemInInventory.quantity < req.quantity) {
+          return false;
+        }
+      }
+    }
+    return true;
+  };
 
 
   return (
@@ -330,11 +352,9 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                   <span className="font-semibold">{formattedGameTime}</span>
                 </div>
               </div>
-
               <CardDescription className="mt-4 text-sm">
                 Gain XP by harvesting crops to level up your Farm. Feed Neitts to level up your Neitt Slaver rank. Sell items to improve your Trader level!
               </CardDescription>
-
             </CardContent>
           </ScrollArea>
         </TabsContent>
@@ -411,7 +431,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                           return (
                             <li key={`nit-${item.nitId}`} className="flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm hover:bg-secondary/50">
                               <div className="flex items-center space-x-3">
-                                {nit.imageUrl && typeof nit.imageUrl === 'object' ? ( // Check if StaticImageData
+                                {nit.imageUrl && typeof nit.imageUrl === 'object' ? ( 
                                   <Image src={nit.imageUrl} alt={nit.name} width={32} height={32} className="object-contain rounded-md" data-ai-hint={nit.dataAiHint}/>
                                 ) : (
                                   <NitIconComponent className="w-8 h-8 text-purple-500" />
@@ -507,13 +527,61 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
         <TabsContent value="town">
           <ScrollArea className="h-[300px] sm:h-[400px] lg:max-h-[calc(60vh-100px)]">
             <CardContent className="space-y-4 pt-4">
-              <CardTitle className="text-xl text-primary-foreground/80">Welcome to Town!</CardTitle>
-              <CardDescription>Explore different buildings and features in town.</CardDescription>
-              <div className="flex items-center justify-center h-40">
-                <p className="text-muted-foreground">Town features coming soon!</p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Card className="hover:shadow-md transition-shadow">
+                <CardTitle className="text-xl text-primary-foreground/80 flex items-center gap-2">
+                    <ScrollText className="w-6 h-6" /> Quest Square
+                </CardTitle>
+                <CardDescription>Complete quests for rewards. New quests appear periodically.</CardDescription>
+
+                {activeQuests.length === 0 ? (
+                    <div className="flex items-center justify-center h-40">
+                        <p className="text-muted-foreground text-center">No active quests at the moment.<br/>Check back later for new opportunities!</p>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {activeQuests.map(quest => {
+                            const canAffordToComplete = canCompleteQuest(quest);
+                            return (
+                                <Card key={quest.id} className="bg-secondary/30 shadow-md hover:shadow-lg transition-shadow">
+                                    <CardHeader className="pb-3">
+                                        <CardTitle className="text-lg">{quest.title}</CardTitle>
+                                        <CardDescription className="text-sm">{quest.description}</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-2 pb-3">
+                                        <div>
+                                            <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-1">Requirements:</h4>
+                                            <ul className="list-disc list-inside pl-2 text-sm space-y-0.5">
+                                                {quest.requirements.map(req => {
+                                                    const item = req.type === 'crop' ? getCropById(req.itemId) : getNitById(req.itemId);
+                                                    return (
+                                                        <li key={`${req.itemId}-${req.type}`}>
+                                                            {req.quantity}x {item?.name || req.itemId}
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
+                                        </div>
+                                        <div>
+                                          <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-0.5">Reward:</h4>
+                                          <p className="text-sm flex items-center"><Coins className="w-4 h-4 mr-1 text-primary" /> {quest.rewardCurrency} Gold</p>
+                                        </div>
+                                    </CardContent>
+                                    <CardFooter>
+                                        <Button
+                                            onClick={() => onCompleteQuest(quest.id)}
+                                            disabled={!canAffordToComplete}
+                                            className="w-full"
+                                            variant={canAffordToComplete ? "default" : "outline"}
+                                        >
+                                            <CheckSquare className="w-4 h-4 mr-2"/> Complete Quest
+                                        </Button>
+                                    </CardFooter>
+                                </Card>
+                            );
+                        })}
+                    </div>
+                )}
+                 <Separator className="my-6"/>
+                 <Card className="hover:shadow-md transition-shadow">
                       <CardHeader>
                           <CardTitle className="text-lg flex items-center gap-2"><ShoppingCart className="w-5 h-5" /> General Store</CardTitle>
                       </CardHeader>
@@ -524,21 +592,10 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                           <Button variant="outline" className="w-full" disabled>Coming Soon</Button>
                       </CardContent>
                   </Card>
-                  <Card className="hover:shadow-md transition-shadow">
-                      <CardHeader>
-                          <CardTitle className="text-lg flex items-center gap-2"><Package className="w-5 h-5" /> Community Center</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                          <p className="text-sm text-muted-foreground">Participate in events or take on quests.</p>
-                      </CardContent>
-                      <CardContent className="pt-0">
-                          <Button variant="outline" className="w-full" disabled>Coming Soon</Button>
-                      </CardContent>
-                  </Card>
-              </div>
             </CardContent>
           </ScrollArea>
         </TabsContent>
+
 
         <TabsContent value="neittFarm">
           <ScrollArea className="h-[300px] sm:h-[400px] lg:max-h-[calc(60vh-100px)]">
@@ -655,7 +712,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                           ) : <NeittIconLucide className="w-10 h-10 text-muted-foreground" /> }
                           <div className="flex-grow">
                             <p className="font-semibold">{neitt.name}</p>
-                            <p className="text-xs text-muted-foreground max-w-xs truncate">{neitt.description}</p>
+                            <p className="text-xs text-muted-foreground max-wxs truncate">{neitt.description}</p>
                              <p className="text-xs text-muted-foreground">Cost: <Coins className="inline w-3 h-3 mr-0.5" />{neitt.cost}</p>
                              <p className="text-xs text-muted-foreground">Produces: {nitsData.find(n=>n.id === neitt.producesNitId)?.name || 'Nit'} ({productionRange} per feed / {neitt.productionTime/1000}s each)</p>
                              {feedCropForShop && <p className="text-xs text-muted-foreground">Eats: {feedCropForShop.name}</p>}

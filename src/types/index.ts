@@ -21,8 +21,8 @@ export interface Crop {
   dataAiHintFarmPlot?: string;
 
   // Fallback if specific images are not provided
-  imageUrl?: StaticImageData;
-  dataAiHint?: string;
+  imageUrl?: StaticImageData; // Deprecated, prefer specific ones
+  dataAiHint?: string; // Deprecated, prefer specific ones
 }
 
 export interface PlotState {
@@ -102,4 +102,38 @@ export interface Nit {
 export interface OwnedNit {
   nitId: string;
   quantity: number;
+}
+
+// Quest System Types
+export interface QuestItemRequirement {
+  type: 'crop' | 'nit';
+  itemId: string; // cropId or nitId
+  quantity: number;
+}
+
+export interface Quest {
+  id: string;
+  title: string;
+  description: string;
+  requirements: QuestItemRequirement[];
+  rewardCurrency: number;
+  timePosted: number; // Timestamp when the quest was generated/posted
+}
+
+// For defining templates from which quests can be generated
+export interface QuestTemplate {
+  id: string; // Unique ID for the template
+  titleGenerator: (item1?: Crop | Nit, item2?: Crop | Nit) => string;
+  descriptionGenerator: (qty1: number, item1?: Crop | Nit, qty2?: number, item2?: Crop | Nit) => string;
+  requirementGenerator: (
+    cropsData: Crop[], nitsData: Nit[],
+    getEffectiveCropSellPrice: (basePrice: number) => number,
+    playerFarmLevel: number // To potentially scale difficulty or item availability
+  ) => { requirements: QuestItemRequirement[], reward: number } | null; // Returns null if quest cannot be generated
+  // rewardMultiplier: number; // Multiplier applied to the sum of base sell prices of required items
+  // minQuantity?: number;
+  // maxQuantity?: number;
+  // itemType: 'crop' | 'nit' | 'mixed'; // Type of item(s) this quest template uses
+  // specificItemId?: string; // Optional: if the template is for a very specific item
+  minFarmLevel?: number; // Minimum farm level to unlock this quest type
 }

@@ -2,11 +2,12 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import type { PlotState, InventoryItem, Crop, UpgradesState, UpgradeId, OwnedNeitt, OwnedNit, Nit, NeittType, Farm } from '@/types';
+import type { PlotState, InventoryItem, Crop, UpgradesState, UpgradeId, OwnedNeitt, OwnedNit, Nit, NeittType, Farm, Quest, QuestItemRequirement } from '@/types';
 import { CROPS_DATA } from '@/config/crops';
 import { UPGRADES_DATA } from '@/config/upgrades';
 import { NEITTS_DATA } from '@/config/neitts';
-import { NITS_DATA } from '@/config/nits'; // Import NITS_DATA
+import { NITS_DATA } from '@/config/nits';
+import { QUEST_TEMPLATES, QUEST_GENERATION_INTERVAL, MAX_ACTIVE_QUESTS, QUEST_CHECK_INTERVAL } from '@/config/questConfig';
 import GameHeader from '@/components/game/GameHeader';
 import PlantingArea from '@/components/game/PlantingArea';
 import SeedShopPanel from '@/components/game/SeedShopPanel';
@@ -28,7 +29,7 @@ import {
 
 const INITIAL_CURRENCY = 20;
 const INITIAL_NUM_PLOTS = 6;
-const SAVE_GAME_KEY = 'harvestClickerSaveData_v2';
+const SAVE_GAME_KEY = 'harvestClickerSaveData_v2.1_quests'; // Incremented version for new save structure
 
 const INITIAL_FARM_LEVEL = 1;
 const INITIAL_FARM_XP = 0;
@@ -82,8 +83,12 @@ export default function HarvestClickerPage() {
   const [totalMoneySpent, setTotalMoneySpent] = useState<number>(0);
   const [totalCropsHarvested, setTotalCropsHarvested] = useState<number>(0);
   const [totalNeittsFed, setTotalNeittsFed] = useState<number>(0);
-  const [gameStartTime, setGameStartTime] = useState<number>(0); // Initialized in loadGame or reset
+  const [gameStartTime, setGameStartTime] = useState<number>(0);
   const [formattedGameTime, setFormattedGameTime] = useState<string>("00:00:00");
+
+  // Quest State
+  const [activeQuests, setActiveQuests] = useState<Quest[]>([]);
+  const [lastQuestGenerationTime, setLastQuestGenerationTime] = useState<number>(0);
 
 
   useEffect(() => {
@@ -93,7 +98,7 @@ export default function HarvestClickerPage() {
   }, []);
 
   useEffect(() => {
-    if (!isClient || gameStartTime === 0) return; // Don't start timer if gameStartTime isn't set
+    if (!isClient || gameStartTime === 0) return;
 
     const timer = setInterval(() => {
       const now = Date.now();
@@ -112,18 +117,92 @@ export default function HarvestClickerPage() {
   }, [gameStartTime, isClient]);
 
   const calculateXpToNextLevel = useCallback((level: number): number => {
-    // XP formula: Base XP for L1->L2 + (L-1)*linearFactor + (L-1)^2*quadraticFactor
-    // This makes the *increment* in XP needed for the next level itself increase.
-    const baseXP = 50; // XP needed for Level 1 -> Level 2
-    const linearFactor = 20; // Additional XP per level (linear part)
-    const quadraticFactor = 10; // Factor for quadratic scaling (makes increments grow)
-    
-    // level is the current level of the player. We calculate XP needed to reach (level + 1).
-    // So, (level - 1) is used as the "progression step" for the formula.
-    // e.g. for L1->L2, current level is 1, (level-1) = 0. XP = baseXP.
-    // for L2->L3, current level is 2, (level-1) = 1. XP = baseXP + linearFactor + quadraticFactor.
+    const baseXP = 50; 
+    const linearFactor = 20; 
+    const quadraticFactor = 10; 
     return Math.floor(baseXP + (level - 1) * linearFactor + Math.pow(Math.max(0, level - 1), 2) * quadraticFactor);
   }, []);
+
+
+  const getEffectiveCropSellPrice = useCallback((basePrice: number) => {
+    return upgrades.negotiationSkills ? Math.floor(basePrice * 1.15) : basePrice;
+  }, [upgrades.negotiationSkills]);
+
+  // Quest Generation Logic
+  const generateNewQuests = useCallback(() => {
+    const numberOfQuestsToGenerate = Math.floor(Math.random() * 3) + 1; // 1 to 3 quests
+    const newQuests: Quest[] = [];
+
+    const availableTemplates = QUEST_TEMPLATES.filter(template => farmLevel >= (template.minFarmLevel || 0));
+    if (availableTemplates.length === 0) return;
+
+    for (let i = 0; i < numberOfQuestsToGenerate; i++) {
+      const template = availableTemplates[Math.floor(Math.random() * availableTemplates.length)];
+      const generatedQuestData = template.requirementGenerator(CROPS_DATA, NITS_DATA, getEffectiveCropSellPrice, farmLevel);
+
+      if (generatedQuestData) {
+        const { requirements, reward } = generatedQuestData;
+        let title = template.titleGenerator();
+        let description = template.descriptionGenerator(0); // Base description
+
+        // Customize title and description based on actual items in requirements
+        if (requirements.length > 0) {
+            const item1Info = requirements[0].type === 'crop' 
+                ? CROPS_DATA.find(c => c.id === requirements[0].itemId)
+                : NITS_DATA.find(n => n.id === requirements[0].itemId);
+            const item2Info = requirements.length > 1 
+                ? (requirements[1].type === 'crop'
+                    ? CROPS_DATA.find(c => c.id === requirements[1].itemId)
+                    : NITS_DATA.find(n => n.id === requirements[1].itemId))
+                : undefined;
+
+            title = template.titleGenerator(item1Info, item2Info);
+            description = template.descriptionGenerator(
+                requirements[0].quantity, 
+                item1Info, 
+                requirements[1]?.quantity, 
+                item2Info
+            );
+        }
+        
+        newQuests.push({
+          id: self.crypto.randomUUID(),
+          title,
+          description,
+          requirements,
+          rewardCurrency: reward,
+          timePosted: Date.now(),
+        });
+      }
+    }
+
+    if (newQuests.length > 0) {
+      setActiveQuests(prevQuests => {
+        const combined = [...prevQuests, ...newQuests];
+        // Sort by timePosted descending to keep newest, then slice
+        const sorted = combined.sort((a, b) => b.timePosted - a.timePosted);
+        return sorted.slice(0, MAX_ACTIVE_QUESTS);
+      });
+      toast({ title: "New Quests Available!", description: "Check the Quest Square in Town." });
+    }
+  }, [farmLevel, getEffectiveCropSellPrice, toast]);
+
+
+  useEffect(() => {
+    if (!isClient) return;
+
+    const questGenerationTimer = setInterval(() => {
+      const now = Date.now();
+      if (now - lastQuestGenerationTime >= QUEST_GENERATION_INTERVAL) {
+        // console.log("Attempting to generate new quests...");
+        generateNewQuests();
+        setLastQuestGenerationTime(now);
+      }
+    }, QUEST_CHECK_INTERVAL); // Check more frequently if it's time
+
+    return () => clearInterval(questGenerationTimer);
+  }, [isClient, lastQuestGenerationTime, generateNewQuests]);
+
 
   // Neitt Production Logic
   useEffect(() => {
@@ -187,10 +266,6 @@ export default function HarvestClickerPage() {
     return upgrades.bulkDiscount ? Math.ceil(basePrice * 0.9) : basePrice;
   }, [upgrades.bulkDiscount]);
 
-  const getEffectiveCropSellPrice = useCallback((basePrice: number) => {
-    return upgrades.negotiationSkills ? Math.floor(basePrice * 1.15) : basePrice;
-  }, [upgrades.negotiationSkills]);
-
   const getEffectiveCropGrowTime = useCallback((baseTime: number) => {
     return upgrades.fertilizer ? baseTime * 0.8 : baseTime;
   }, [upgrades.fertilizer]);
@@ -211,7 +286,7 @@ export default function HarvestClickerPage() {
     }
 
     setCurrency(prevCurrency => prevCurrency - effectiveSeedPrice);
-    setTotalMoneySpent(prev => prev + effectiveSeedPrice); // Track money spent
+    setTotalMoneySpent(prev => prev + effectiveSeedPrice);
     setOwnedSeeds(prevOwnedSeeds => {
       const existingSeedIndex = prevOwnedSeeds.findIndex(item => item.cropId === cropId);
       if (existingSeedIndex > -1) {
@@ -308,7 +383,7 @@ export default function HarvestClickerPage() {
       )
     );
 
-    setTotalCropsHarvested(prev => prev + 1); // Track crops harvested
+    setTotalCropsHarvested(prev => prev + 1);
 
     setHarvestedInventory(prevInventory => {
       const existingItemIndex = prevInventory.findIndex(item => item.cropId === harvestedCropId);
@@ -334,7 +409,6 @@ export default function HarvestClickerPage() {
           currentLevel++;
           newXp -= xpNeededForNext;
           xpNeededForNext = calculateXpToNextLevel(currentLevel);
-          // Delayed toast to prevent issues if called during render or rapid state changes
           setTimeout(() => toast({
             title: "Farm Level Up!",
             description: `Congratulations! Your farm reached level ${currentLevel}!`,
@@ -377,26 +451,24 @@ export default function HarvestClickerPage() {
 
     setCurrency(prevCurrency => prevCurrency + earnedGold);
 
-    // Add Trader XP
-    const gainedTraderXp = earnedGold; // 1 gold = 1 XP
+    const gainedTraderXp = earnedGold;
     if (gainedTraderXp > 0) {
         setTraderXp(prevXp => {
             let newXp = prevXp + gainedTraderXp;
-            let currentTraderLvl = traderLevel; // Use a local variable for current level within this update
+            let currentTraderLvl = traderLevel;
             let xpNeededForNext = calculateXpToNextLevel(currentTraderLvl);
 
             while (newXp >= xpNeededForNext) {
                 currentTraderLvl++;
                 newXp -= xpNeededForNext;
                 xpNeededForNext = calculateXpToNextLevel(currentTraderLvl);
-                 // Delayed toast
                 setTimeout(() => toast({
                     title: "Trader Level Up!",
                     description: `Congratulations! Your Trader level reached ${currentTraderLvl}!`,
                     variant: "default"
                 }), 0);
             }
-            setTraderLevel(currentTraderLvl); // Update state after the loop
+            setTraderLevel(currentTraderLvl);
             return newXp;
         });
     }
@@ -423,18 +495,18 @@ export default function HarvestClickerPage() {
     }
 
     setCurrency(prevCurrency => prevCurrency - upgradeToBuy.cost);
-    setTotalMoneySpent(prev => prev + upgradeToBuy.cost); // Track money spent
+    setTotalMoneySpent(prev => prev + upgradeToBuy.cost);
     setUpgrades(prevUpgrades => ({ ...prevUpgrades, [upgradeId]: true }));
 
     if (upgradeId === 'unlockFarm2') {
       setFarms(prevFarms => {
-        if (prevFarms.find(f => f.id === 'farm-2')) return prevFarms; // Already exists
+        if (prevFarms.find(f => f.id === 'farm-2')) return prevFarms;
         return [...prevFarms, { id: 'farm-2', name: 'Farm 2', plots: generateInitialPlots(INITIAL_NUM_PLOTS, 'farm-2') }];
       });
       toast({ title: "Farm 2 Unlocked!", description: `You bought ${upgradeToBuy.name} for ${upgradeToBuy.cost} gold.` });
     } else if (upgradeId === 'unlockFarm3') {
       setFarms(prevFarms => {
-        if (prevFarms.find(f => f.id === 'farm-3')) return prevFarms; // Already exists
+        if (prevFarms.find(f => f.id === 'farm-3')) return prevFarms;
         return [...prevFarms, { id: 'farm-3', name: 'Farm 3', plots: generateInitialPlots(INITIAL_NUM_PLOTS, 'farm-3') }];
       });
       toast({ title: "Farm 3 Unlocked!", description: `You bought ${upgradeToBuy.name} for ${upgradeToBuy.cost} gold.` });
@@ -455,7 +527,7 @@ export default function HarvestClickerPage() {
     }
 
     setCurrency(prev => prev - neittToBuy.cost);
-    setTotalMoneySpent(prev => prev + neittToBuy.cost); // Track money spent
+    setTotalMoneySpent(prev => prev + neittToBuy.cost);
     setOwnedNeitts(prevOwnedNeitts => {
       const newNeittInstance: OwnedNeitt = {
         instanceId: self.crypto.randomUUID(),
@@ -483,7 +555,7 @@ export default function HarvestClickerPage() {
                 setTimeout(() => toast({ title: "Neitt type error!", variant: "destructive" }), 0);
                 return n;
             }
-            successfullyFedNeittType = neittType; // Store for later XP gain
+            successfullyFedNeittType = neittType;
 
             if (n.nitsLeftToProduce > 0) {
                 setTimeout(() => toast({ title: `${neittType.name} is already producing!`, description: "It's busy producing Nits." }), 0);
@@ -520,7 +592,7 @@ export default function HarvestClickerPage() {
                 return n;
             }
             
-            fed = true; // Mark that feeding occurred
+            fed = true;
             const nitsToProduceThisCycle = Math.floor(Math.random() * (neittType.maxProductionCapacity - neittType.minProductionCapacity + 1)) + neittType.minProductionCapacity;
             
             setTimeout(() => toast({ title: `Fed ${neittType.name}!`, description: `Used 1 ${requiredCrop.name}. It will now produce ${nitsToProduceThisCycle} Nit(s).` }), 0);
@@ -543,13 +615,13 @@ export default function HarvestClickerPage() {
       setNeittSlaverXp(prevXp => {
         let newXp = prevXp + gainedXp;
         let currentLevel = neittSlaverLevel;
-        let xpNeededForNext = calculateXpToNextLevel(currentLevel); // Assuming same XP curve for now
+        let xpNeededForNext = calculateXpToNextLevel(currentLevel);
 
         while (newXp >= xpNeededForNext) {
           currentLevel++;
           newXp -= xpNeededForNext;
           xpNeededForNext = calculateXpToNextLevel(currentLevel);
-          setTimeout(() => toast({ // Delayed toast
+          setTimeout(() => toast({
             title: "Neitt Slaver Level Up!",
             description: `Congratulations! Your Neitt Slaver level reached ${currentLevel}!`,
             variant: "default"
@@ -590,12 +662,11 @@ export default function HarvestClickerPage() {
 
     setCurrency(prevCurrency => prevCurrency + earnedGold);
 
-    // Add Trader XP
-    const gainedTraderXp = earnedGold; // 1 gold = 1 XP
+    const gainedTraderXp = earnedGold;
     if (gainedTraderXp > 0) {
         setTraderXp(prevXp => {
             let newXp = prevXp + gainedTraderXp;
-            let currentTraderLvl = traderLevel; // Use a local variable
+            let currentTraderLvl = traderLevel;
             let xpNeededForNext = calculateXpToNextLevel(currentTraderLvl);
 
             while (newXp >= xpNeededForNext) {
@@ -608,7 +679,7 @@ export default function HarvestClickerPage() {
                     variant: "default"
                 }), 0);
             }
-            setTraderLevel(currentTraderLvl); // Update state after the loop
+            setTraderLevel(currentTraderLvl);
             return newXp;
         });
     }
@@ -618,6 +689,72 @@ export default function HarvestClickerPage() {
       description: `You earned ${earnedGold} gold.`,
     });
   }, [producedNits, toast, traderLevel, calculateXpToNextLevel]);
+
+  const handleCompleteQuest = useCallback((questId: string) => {
+    const quest = activeQuests.find(q => q.id === questId);
+    if (!quest) {
+      toast({ title: "Quest not found!", variant: "destructive" });
+      return;
+    }
+
+    // Check requirements
+    let canComplete = true;
+    const tempHarvestedInventory = [...harvestedInventory];
+    const tempProducedNits = [...producedNits];
+
+    for (const req of quest.requirements) {
+      if (req.type === 'crop') {
+        const itemIndex = tempHarvestedInventory.findIndex(item => item.cropId === req.itemId);
+        if (itemIndex === -1 || tempHarvestedInventory[itemIndex].quantity < req.quantity) {
+          canComplete = false;
+          break;
+        }
+      } else if (req.type === 'nit') {
+        const itemIndex = tempProducedNits.findIndex(item => item.nitId === req.itemId);
+        if (itemIndex === -1 || tempProducedNits[itemIndex].quantity < req.quantity) {
+          canComplete = false;
+          break;
+        }
+      }
+    }
+
+    if (!canComplete) {
+      toast({ title: "Requirements Not Met!", description: "You don't have all the items needed for this quest.", variant: "destructive" });
+      return;
+    }
+
+    // Deduct items
+    setHarvestedInventory(currentInventory => {
+      let newInventory = [...currentInventory];
+      quest.requirements.filter(r => r.type === 'crop').forEach(req => {
+        const itemIndex = newInventory.findIndex(item => item.cropId === req.itemId);
+        if (itemIndex !== -1) {
+          newInventory[itemIndex].quantity -= req.quantity;
+        }
+      });
+      return newInventory.filter(item => item.quantity > 0);
+    });
+
+    setProducedNits(currentNits => {
+      let newNits = [...currentNits];
+      quest.requirements.filter(r => r.type === 'nit').forEach(req => {
+        const itemIndex = newNits.findIndex(item => item.nitId === req.itemId);
+        if (itemIndex !== -1) {
+          newNits[itemIndex].quantity -= req.quantity;
+        }
+      });
+      return newNits.filter(item => item.quantity > 0);
+    });
+
+    // Add reward
+    setCurrency(prev => prev + quest.rewardCurrency);
+
+    // Remove quest
+    setActiveQuests(prevQuests => prevQuests.filter(q => q.id !== questId));
+
+    toast({ title: "Quest Completed!", description: `You earned ${quest.rewardCurrency} gold for completing "${quest.title}".` });
+
+  }, [activeQuests, harvestedInventory, producedNits, currency, toast, setHarvestedInventory, setProducedNits, setCurrency, setActiveQuests]);
 
 
   const saveGame = useCallback(() => {
@@ -643,6 +780,8 @@ export default function HarvestClickerPage() {
         totalCropsHarvested,
         totalNeittsFed,
         gameStartTime,
+        activeQuests, // Save quests
+        lastQuestGenerationTime, // Save last quest gen time
       };
       localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
       toast({
@@ -657,7 +796,14 @@ export default function HarvestClickerPage() {
         variant: "destructive",
       });
     }
-  }, [farms, currentFarmId, currency, harvestedInventory, ownedSeeds, upgrades, ownedNeitts, producedNits, selectedSeedFromOwnedId, farmLevel, farmXp, neittSlaverLevel, neittSlaverXp, traderLevel, traderXp, totalMoneySpent, totalCropsHarvested, totalNeittsFed, gameStartTime, toast, isClient]);
+  }, [
+      farms, currentFarmId, currency, harvestedInventory, ownedSeeds, upgrades, 
+      ownedNeitts, producedNits, selectedSeedFromOwnedId, 
+      farmLevel, farmXp, neittSlaverLevel, neittSlaverXp, traderLevel, traderXp,
+      totalMoneySpent, totalCropsHarvested, totalNeittsFed, gameStartTime, 
+      activeQuests, lastQuestGenerationTime, // Include in dependencies
+      toast, isClient
+  ]);
 
   const resetGameStates = useCallback((showToast: boolean = true) => {
     const farm1Plots = generateInitialPlots(INITIAL_NUM_PLOTS, 'farm-1');
@@ -680,6 +826,8 @@ export default function HarvestClickerPage() {
     setTotalCropsHarvested(0);
     setTotalNeittsFed(0);
     setGameStartTime(Date.now());
+    setActiveQuests([]); // Reset quests
+    setLastQuestGenerationTime(Date.now()); // Reset quest timer
     if (showToast) {
       toast({
         title: "Game Reset",
@@ -692,7 +840,7 @@ export default function HarvestClickerPage() {
     if (!isClient) return;
     try {
       localStorage.removeItem(SAVE_GAME_KEY);
-      resetGameStates(false); // Reset state without showing "Game Reset" toast
+      resetGameStates(false);
       toast({
         title: "Saved Data Cleared",
         description: "All your saved progress has been removed. Starting a fresh game.",
@@ -727,7 +875,7 @@ export default function HarvestClickerPage() {
                   isHarvestable: p.isHarvestable || false,
               })) : generateInitialPlots(INITIAL_NUM_PLOTS, farm.id)
             }));
-          } else if (Array.isArray(gameState.plots)) { // Handle old save format (single farm)
+          } else if (Array.isArray(gameState.plots)) { 
             const migratedFarm1Plots = gameState.plots.map((p: any, idx: number) => ({
                 id: p.id || `farm-1-plot-${idx+1}`,
                 cropId: p.cropId,
@@ -735,12 +883,11 @@ export default function HarvestClickerPage() {
                 isHarvestable: p.isHarvestable || false,
             }));
             loadedFarms = [{ id: 'farm-1', name: 'Farm 1', plots: migratedFarm1Plots }];
-            // Migration logic for old 'expandFarm' to 'unlockFarm2'
             if (gameState.upgrades?.expandFarm && !gameState.upgrades?.unlockFarm2) {
-                if(!loadedFarms.find(f => f.id === 'farm-2')) { // ensure farm-2 is not already present
+                if(!loadedFarms.find(f => f.id === 'farm-2')) { 
                     loadedFarms.push({ id: 'farm-2', name: 'Farm 2', plots: generateInitialPlots(INITIAL_NUM_PLOTS, 'farm-2')});
                 }
-                if(gameState.upgrades) gameState.upgrades.unlockFarm2 = true; // Set the new flag
+                if(gameState.upgrades) gameState.upgrades.unlockFarm2 = true;
             }
           }
           setFarms(loadedFarms);
@@ -751,7 +898,7 @@ export default function HarvestClickerPage() {
           setOwnedSeeds(gameState.ownedSeeds || []);
 
           const loadedUpgrades = {...initialUpgradesState, ...gameState.upgrades};
-          if ('expandFarm' in loadedUpgrades) { // Remove old 'expandFarm' key if it exists
+          if ('expandFarm' in loadedUpgrades) { 
             delete (loadedUpgrades as any).expandFarm;
           }
           setUpgrades(loadedUpgrades);
@@ -763,15 +910,23 @@ export default function HarvestClickerPage() {
           setTraderLevel(gameState.traderLevel || INITIAL_TRADER_LEVEL);
           setTraderXp(gameState.traderXp || INITIAL_TRADER_XP);
 
-
-          // Load Statistics
           setTotalMoneySpent(gameState.totalMoneySpent || 0);
           setTotalCropsHarvested(gameState.totalCropsHarvested || 0);
           setTotalNeittsFed(gameState.totalNeittsFed || 0);
           if (typeof gameState.gameStartTime === 'number' && gameState.gameStartTime > 0) {
             setGameStartTime(gameState.gameStartTime);
           } else {
-            setGameStartTime(Date.now()); // For old saves or new games
+            setGameStartTime(Date.now());
+          }
+
+          setActiveQuests(gameState.activeQuests || []);
+          // If loading an old save without lastQuestGenerationTime, or if it's very old,
+          // set it so quests might generate soon, but not immediately to avoid overwhelming.
+          const loadedLastQuestTime = gameState.lastQuestGenerationTime || 0;
+          if (Date.now() - loadedLastQuestTime > QUEST_GENERATION_INTERVAL * 2) {
+            setLastQuestGenerationTime(Date.now() - QUEST_GENERATION_INTERVAL + (QUEST_CHECK_INTERVAL * 2) ); 
+          } else {
+            setLastQuestGenerationTime(loadedLastQuestTime);
           }
 
 
@@ -842,8 +997,7 @@ export default function HarvestClickerPage() {
             title: "Welcome Farmer!",
             description: "Starting a new game. Good luck!",
           });
-         resetGameStates(false);
-         setGameStartTime(Date.now()); // Explicitly set for a brand new game
+         resetGameStates(false); // This already sets gameStartTime and lastQuestGenerationTime
       }
     } catch (error) {
       console.error("Failed to load game:", error);
@@ -853,7 +1007,6 @@ export default function HarvestClickerPage() {
         variant: "destructive",
       });
       resetGameStates(false);
-      setGameStartTime(Date.now()); // Ensure it's set on error too
     }
   }, [toast, isClient, resetGameStates]);
 
@@ -955,11 +1108,13 @@ export default function HarvestClickerPage() {
             currentFarmId={currentFarmId}
             onFarmChange={setCurrentFarmId}
 
-            // Statistics
             totalMoneySpent={totalMoneySpent}
             totalCropsHarvested={totalCropsHarvested}
             totalNeittsFed={totalNeittsFed}
             formattedGameTime={formattedGameTime}
+
+            activeQuests={activeQuests}
+            onCompleteQuest={handleCompleteQuest}
           />
         </div>
         <div className="pt-4 text-center space-y-2 sm:space-y-0 sm:flex sm:justify-center sm:space-x-2">
