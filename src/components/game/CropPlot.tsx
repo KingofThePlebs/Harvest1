@@ -2,14 +2,14 @@
 "use client";
 
 import type { FC } from 'react';
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import type { PlotState } from '@/types';
 import { CROPS_DATA } from '@/config/crops';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Leaf, Zap } from 'lucide-react'; 
+import { Leaf, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 
@@ -47,7 +47,7 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
       const updateGrowth = () => {
         const elapsedTime = Date.now() - (plot.plantTime ?? 0);
         const currentProgress = effectiveGrowTime > 0 ? Math.min(100, (elapsedTime / effectiveGrowTime) * 100) : 0;
-        
+
         setProgress(prevProgress => {
           if (Math.abs(prevProgress - currentProgress) > 0.1 || currentProgress === 100 || currentProgress === 0) {
             return currentProgress;
@@ -60,25 +60,25 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
           if (intervalId) clearInterval(intervalId);
         }
       };
-      
-      updateGrowth(); 
-      if (!isReadyToHarvest && effectiveGrowTime > 0) { 
+
+      updateGrowth();
+      if (!isReadyToHarvest && effectiveGrowTime > 0) {
          const updateInterval = Math.max(100, Math.min(effectiveGrowTime / 100, 500));
-         intervalId = setInterval(updateGrowth, updateInterval); 
+         intervalId = setInterval(updateGrowth, updateInterval);
       }
 
     } else if (!plantedCrop) {
       setProgress(0);
       setIsReadyToHarvest(false);
     } else if (isReadyToHarvest) {
-      setProgress(100); 
+      setProgress(100);
     }
 
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
   }, [plantedCrop, plot.plantTime, isReadyToHarvest, effectiveGrowTime]);
-  
+
   useEffect(() => {
     // Cleanup timeout on unmount
     return () => {
@@ -93,7 +93,7 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
     if (isReadyToHarvest && plantedCrop) {
       onHarvest(plot.id, plantedCrop.id);
       setShowHarvestEffect(true);
-      setIsReadyToHarvest(false); 
+      setIsReadyToHarvest(false);
       setProgress(0);
 
       if (effectTimeoutRef.current) {
@@ -101,24 +101,32 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
       }
       effectTimeoutRef.current = setTimeout(() => {
         setShowHarvestEffect(false);
-      }, 300); // Duration of the animation in ms
+      }, 300);
     } else if (!plantedCrop && selectedSeedId) {
-      onPlant(plot.id); 
+      onPlant(plot.id);
     }
   };
-  
+
   const CropIconComponent = plantedCrop?.icon;
 
   const numStages = plantedCrop?.farmPlotImageUrls?.length ?? 0;
   let currentStageImageUrl: string | undefined;
+  let currentStageImageStaticData: import('next/image').StaticImageData | undefined;
+
 
   if (plantedCrop && numStages > 0 && plantedCrop.farmPlotImageUrls) {
     const currentDisplayProgress = isReadyToHarvest ? 100 : progress;
     let stageIndex = Math.floor(currentDisplayProgress / (100 / numStages));
-    stageIndex = Math.min(stageIndex, numStages - 1); 
-    stageIndex = Math.max(0, stageIndex); 
+    stageIndex = Math.min(stageIndex, numStages - 1);
+    stageIndex = Math.max(0, stageIndex);
     const imgData = plantedCrop.farmPlotImageUrls[stageIndex];
-    currentStageImageUrl = typeof imgData === 'string' ? imgData : imgData?.src;
+
+    if (typeof imgData === 'string') { // Should not happen with StaticImageData imports
+        currentStageImageUrl = imgData;
+    } else if (imgData && 'src' in imgData) { // Check if it's StaticImageData
+        currentStageImageStaticData = imgData;
+        currentStageImageUrl = imgData.src; // Keep for data-ai-hint if needed, Image component handles StaticImageData directly
+    }
   }
 
 
@@ -127,52 +135,52 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
       <div
         className="relative w-full"
         style={{
-          paddingBottom: !plantedCrop ? 'calc(100% + 16px)' : '100%', 
+          paddingBottom: '125%', // Consistent aspect ratio (e.g., 4:5 width:height)
         }}
       >
-        <Card 
+        <Card
           ref={plotCardRef}
           className={cn(
-            "absolute inset-0 w-full h-full flex flex-col items-center justify-center shadow-lg hover:shadow-xl transition-shadow duration-300 bg-background/70",
+            "absolute inset-0 w-full h-full flex flex-col items-center justify-between shadow-lg hover:shadow-xl transition-shadow duration-300 bg-background/70",
             showHarvestEffect && "animate-harvest-effect"
           )}
         >
-          <CardHeader className="p-2 pt-4 text-center">
-            <CardTitle className="text-sm truncate">{plantedCrop?.name || 'Empty Plot'}</CardTitle>
+          <CardHeader className="p-2 pt-3 sm:pt-4 text-center w-full">
+            <CardTitle className="text-xs sm:text-sm truncate">{plantedCrop?.name || 'Empty Plot'}</CardTitle>
           </CardHeader>
-          <CardContent className="flex-grow flex flex-col items-center justify-center p-2 w-full">
+          <CardContent className="flex-grow flex flex-col items-center justify-center p-1 sm:p-2 w-full">
             {plantedCrop ? (
-              <div className="flex flex-col items-center justify-center space-y-2 w-full">
-                {currentStageImageUrl ? (
-                  <Image 
-                    src={currentStageImageUrl} 
-                    alt={plantedCrop.name} 
-                    width={48} 
-                    height={48} 
-                    className="object-contain rounded-md"
+              <div className="flex flex-col items-center justify-center space-y-1 sm:space-y-2 w-full">
+                {currentStageImageStaticData ? (
+                  <Image
+                    src={currentStageImageStaticData}
+                    alt={plantedCrop.name}
+                    width={48}
+                    height={48}
+                    className="object-contain rounded-md w-10 h-10 sm:w-12 sm:h-12"
                     data-ai-hint={plantedCrop.dataAiHintFarmPlot || plantedCrop.dataAiHint}
                   />
                 ) : CropIconComponent ? (
-                  <CropIconComponent className="w-12 h-12 text-green-600" />
-                ) : <Leaf className="w-12 h-12 text-gray-400" /> }
+                  <CropIconComponent className="w-10 h-10 sm:w-12 sm:h-12 text-green-600" />
+                ) : <Leaf className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400" /> }
                 {!isReadyToHarvest && (
-                  <Progress value={progress} className="w-3/4 h-3 transition-all duration-100" />
+                  <Progress value={progress} className="w-3/4 h-2 sm:h-3 transition-all duration-100" />
                 )}
                 {isReadyToHarvest && (
-                  <div className="text-xs font-semibold text-green-500 flex items-center animate-pulse">
-                    <Zap className="w-4 h-4 mr-1" /> Ready!
+                  <div className="text-xs sm:text-sm font-semibold text-green-500 flex items-center animate-pulse">
+                    <Zap className="w-3 h-3 sm:w-4 sm:h-4 mr-1" /> Ready!
                   </div>
                 )}
               </div>
             ) : (
-              <Leaf className="w-12 h-12 text-muted-foreground opacity-50" />
+              <Leaf className="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground opacity-50" />
             )}
           </CardContent>
-          <CardFooter className="p-2 pb-4 w-full">
-            <Button 
-              onClick={handlePlotClick} 
+          <CardFooter className="p-2 pb-3 sm:pb-4 w-full">
+            <Button
+              onClick={handlePlotClick}
               disabled={(!plantedCrop && !selectedSeedId) || (plantedCrop && !isReadyToHarvest && progress < 100)}
-              className="w-full text-xs h-8"
+              className="w-full text-xs h-7 sm:h-8"
               variant={isReadyToHarvest ? "default" : "secondary"}
             >
               {isReadyToHarvest ? 'Harvest' : plantedCrop ? 'Growing...' : selectedSeedId ? 'Plant' : 'Select Seed'}
@@ -185,4 +193,3 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
 };
 
 export default CropPlot;
-    

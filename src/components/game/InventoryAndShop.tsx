@@ -1,19 +1,19 @@
 
 import type { FC } from 'react';
+import { useState } from 'react';
 import Image from 'next/image';
 import type { InventoryItem, Crop, UpgradeDefinition, UpgradesState, UpgradeId, NeittType, OwnedNeitt, Nit, OwnedNit } from '@/types';
-import { CROPS_DATA } from '@/config/crops'; // Keep CROPS_DATA import
-// NEITTS_DATA is already passed as a prop (neittsData)
-// NITS_DATA is already passed as a prop (nitsData)
+import { CROPS_DATA } from '@/config/crops';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Progress } from '@/components/ui/progress'; 
-// Removed useState and useEffect for 'tick' as it's no longer needed.
-
+import { Progress } from '@/components/ui/progress';
+import { useIsMobile } from '@/hooks/use-mobile';
+import MobileNavSheet from './MobileNavSheet';
+import type { TabDefinition } from './MobileNavSheet';
 
 interface InventoryAndShopProps {
   harvestedInventory: InventoryItem[];
@@ -28,16 +28,24 @@ interface InventoryAndShopProps {
   getEffectiveCropSellPrice: (basePrice: number) => number;
 
   neittsData: NeittType[];
-  ownedNeitts: OwnedNeitt[]; 
+  ownedNeitts: OwnedNeitt[];
   onBuyNeitt: (neittId: string) => void;
   onFeedNeitt: (instanceId: string) => void;
 
   producedNits: OwnedNit[];
   nitsData: Nit[];
   onSellNit: (nitId: string, quantity: number) => void;
-  
-  cropsData: Crop[]; // Added to get details of feed crops
+
+  cropsData: Crop[];
 }
+
+const tabDefinitions: TabDefinition[] = [
+  { id: 'mySeeds', label: 'My Seeds', icon: Sprout },
+  { id: 'sellMarket', label: 'Sell Market', icon: Handshake },
+  { id: 'upgrades', label: 'Upgrades', icon: TrendingUp },
+  { id: 'town', label: 'Town', icon: Building },
+  { id: 'neittFarm', label: 'Neitt Farm', icon: NeittIconLucide },
+];
 
 const InventoryAndShop: FC<InventoryAndShopProps> = ({
   harvestedInventory,
@@ -57,27 +65,36 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   producedNits,
   nitsData,
   onSellNit,
-  cropsData, // Destructure new prop
+  cropsData,
 }) => {
-  const getCropById = (cropId: string): Crop | undefined => cropsData.find(c => c.id === cropId); // Use passed cropsData
+  const getCropById = (cropId: string): Crop | undefined => cropsData.find(c => c.id === cropId);
   const getNitById = (nitId: string): Nit | undefined => nitsData.find(n => n.id === nitId);
 
-  // Removed the 'tick' state and its associated useEffect.
-  // Re-renders will happen when props like 'ownedNeitts' change,
-  // which is sufficient for updating UI elements like progress bars.
+  const [activeTab, setActiveTab] = useState(tabDefinitions[0].id);
+  const isMobile = useIsMobile();
 
   return (
     <Card className="shadow-lg">
-      <Tabs defaultValue="mySeeds" className="w-full">
-        <CardHeader className="pb-0">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="mySeeds" className="flex items-center gap-2"><Sprout className="w-4 h-4" />My Seeds</TabsTrigger>
-            <TabsTrigger value="sellMarket" className="flex items-center gap-2"><Handshake className="w-4 h-4" />Sell Market</TabsTrigger>
-            <TabsTrigger value="upgrades" className="flex items-center gap-2"><TrendingUp className="w-4 h-4" />Upgrades</TabsTrigger>
-            <TabsTrigger value="town" className="flex items-center gap-2"><Building className="w-4 h-4" />Town</TabsTrigger>
-            <TabsTrigger value="neittFarm" className="flex items-center gap-2"><NeittIconLucide className="w-4 h-4" />Neitt Farm</TabsTrigger>
-          </TabsList>
-        </CardHeader>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        {isMobile ? (
+          <div className="p-4 border-b border-border md:hidden">
+            <MobileNavSheet
+              tabs={tabDefinitions}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+            />
+          </div>
+        ) : (
+          <CardHeader className="pb-0 hidden md:block">
+            <TabsList className="grid w-full grid-cols-5">
+              {tabDefinitions.map(tab => (
+                <TabsTrigger key={tab.id} value={tab.id} className="flex items-center gap-2">
+                  <tab.icon className="w-4 h-4" />{tab.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </CardHeader>
+        )}
 
         <TabsContent value="mySeeds">
           <ScrollArea className="h-[300px] sm:h-[400px] lg:max-h-[calc(60vh-100px)]">
@@ -334,14 +351,14 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                     {ownedNeitts.map(ownedNeittInstance => {
                       const neittDetails = neittsData.find(s => s.id === ownedNeittInstance.neittTypeId);
                       if (!neittDetails) return null;
-                      
+
                       const NeittIcon = neittDetails.icon;
                       const requiredFeedCrop = cropsData.find(c => c.id === neittDetails.feedCropId);
-                      const playerHasFeedCrop = requiredFeedCrop ? harvestedInventory.some(item => item.cropId === requiredFeedCrop.id && item.quantity > 0) : false; 
-                      
+                      const playerHasFeedCrop = requiredFeedCrop ? harvestedInventory.some(item => item.cropId === requiredFeedCrop.id && item.quantity > 0) : false;
+
                       let productionProgress = 0;
                       let statusText = "Hungry";
-                      
+
                       if (ownedNeittInstance.nitsLeftToProduce > 0 && ownedNeittInstance.initialNitsForCycle > 0) {
                         const elapsedTime = Date.now() - ownedNeittInstance.lastProductionCycleStartTime;
                         productionProgress = Math.min(100, (elapsedTime / neittDetails.productionTime) * 100);
@@ -358,7 +375,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                       }
 
                       const feedButtonDisabled = ownedNeittInstance.nitsLeftToProduce > 0 || (!!requiredFeedCrop && !playerHasFeedCrop && ownedNeittInstance.nitsLeftToProduce <= 0);
-                      
+
                       let buttonTitle = `Feed ${neittDetails.name}`;
                       if(ownedNeittInstance.nitsLeftToProduce > 0) {
                         buttonTitle = `${neittDetails.name} is producing`;
@@ -373,7 +390,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                         <Card key={ownedNeittInstance.instanceId} className="flex flex-col items-center p-3 bg-secondary/40 shadow-sm rounded-lg hover:shadow-md transition-shadow">
                           {typeof neittDetails.imageUrl === 'string' ? (
                              <Image src={neittDetails.imageUrl} alt={neittDetails.name} width={48} height={48} className="rounded-full mb-1 object-cover ring-2 ring-primary/50" data-ai-hint={neittDetails.dataAiHint} />
-                          ) : neittDetails.imageUrl ? ( // Assuming it's StaticImageData
+                          ) : neittDetails.imageUrl ? ( 
                              <Image src={neittDetails.imageUrl} alt={neittDetails.name} width={48} height={48} className="rounded-full mb-1 object-cover ring-2 ring-primary/50" data-ai-hint={neittDetails.dataAiHint} />
                           ) : NeittIcon ? (
                             <NeittIcon className="w-12 h-12 mb-1" style={{ color: neittDetails.color || 'hsl(var(--primary))' }} />
@@ -388,9 +405,9 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                           {ownedNeittInstance.nitsLeftToProduce > 0 && (
                              <Progress value={productionProgress} className="h-2 w-full mt-1 transition-all duration-100" />
                           )}
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
+                          <Button
+                            size="sm"
+                            variant="outline"
                             className="mt-2 text-xs h-7"
                             onClick={() => onFeedNeitt(ownedNeittInstance.instanceId)}
                             disabled={feedButtonDisabled}
@@ -419,15 +436,15 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                     const NeittShopIcon = neitt.icon;
                     const canAfford = currency >= neitt.cost;
                     const feedCropForShop = cropsData.find(c => c.id === neitt.feedCropId);
-                    const productionRange = neitt.minProductionCapacity === neitt.maxProductionCapacity 
-                                            ? `${neitt.minProductionCapacity}` 
+                    const productionRange = neitt.minProductionCapacity === neitt.maxProductionCapacity
+                                            ? `${neitt.minProductionCapacity}`
                                             : `${neitt.minProductionCapacity}-${neitt.maxProductionCapacity}`;
                     return (
                       <li key={neitt.id} className={`flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm hover:bg-secondary/50 transition-all ${!canAfford ? 'opacity-60' : ''}`}>
                         <div className="flex items-center space-x-3">
                            {typeof neitt.imageUrl === 'string' ? (
                              <Image src={neitt.imageUrl} alt={neitt.name} width={40} height={40} className="rounded-md object-cover" data-ai-hint={neitt.dataAiHint}/>
-                           ) : neitt.imageUrl ? ( // Assuming StaticImageData
+                           ) : neitt.imageUrl ? ( 
                              <Image src={neitt.imageUrl} alt={neitt.name} width={40} height={40} className="rounded-md object-cover" data-ai-hint={neitt.dataAiHint}/>
                           ) : NeittShopIcon ? (
                             <NeittShopIcon className="w-10 h-10" style={{ color: neitt.color || 'hsl(var(--primary))' }}/>
@@ -465,5 +482,3 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
 };
 
 export default InventoryAndShop;
-
-
