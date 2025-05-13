@@ -90,6 +90,8 @@ export default function HarvestClickerPage() {
   }, [gameStartTime, isClient]);
 
   const calculateXpToNextLevel = useCallback((level: number): number => {
+    // XP formula: Base XP + (level - 1) * scaling factor
+    // Example: Level 1->2 needs 50 XP. Level 2->3 needs 50 + (2-1)*50 = 100 XP. Level 3->4 needs 50 + (3-1)*50 = 150 XP.
     return 50 + (level - 1) * 50;
   }, []);
 
