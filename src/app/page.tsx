@@ -102,9 +102,17 @@ export default function HarvestClickerPage() {
   }, [gameStartTime, isClient]);
 
   const calculateXpToNextLevel = useCallback((level: number): number => {
-    // XP formula: Base XP + (level - 1) * scaling factor
-    // Example: Level 1->2 needs 50 XP. Level 2->3 needs 50 + (2-1)*50 = 100 XP. Level 3->4 needs 50 + (3-1)*50 = 150 XP.
-    return 50 + (level - 1) * 50;
+    // XP formula: Base XP for L1->L2 + (L-1)*linearFactor + (L-1)^2*quadraticFactor
+    // This makes the *increment* in XP needed for the next level itself increase.
+    const baseXP = 50; // XP needed for Level 1 -> Level 2
+    const linearFactor = 20; // Additional XP per level (linear part)
+    const quadraticFactor = 10; // Factor for quadratic scaling (makes increments grow)
+    
+    // level is the current level of the player. We calculate XP needed to reach (level + 1).
+    // So, (level - 1) is used as the "progression step" for the formula.
+    // e.g. for L1->L2, current level is 1, (level-1) = 0. XP = baseXP.
+    // for L2->L3, current level is 2, (level-1) = 1. XP = baseXP + linearFactor + quadraticFactor.
+    return Math.floor(baseXP + (level - 1) * linearFactor + Math.pow(Math.max(0, level - 1), 2) * quadraticFactor);
   }, []);
 
   // Neitt Production Logic
@@ -207,7 +215,7 @@ export default function HarvestClickerPage() {
       title: `${cropToBuy.name} Seed Purchased!`,
       description: `Paid ${effectiveSeedPrice} gold. It's now in your seed inventory.`,
     });
-  }, [currency, toast, getEffectiveCropSeedPrice]);
+  }, [currency, toast, getEffectiveCropSeedPrice, upgrades.bulkDiscount]);
 
   const handleSelectSeedForPlanting = useCallback((seedId: string) => {
     const seedInInventory = ownedSeeds.find(s => s.cropId === seedId && s.quantity > 0);
@@ -305,32 +313,39 @@ export default function HarvestClickerPage() {
       return [...prevInventory, { cropId: harvestedCropId, quantity: 1 }];
     });
 
-    toast({
-      title: `Harvested ${crop.name}!`,
-      description: "It's now in your sell market inventory.",
-    });
-
     const gainedXp = crop.xpYield || 0;
-    if (gainedXp > 0) {
+     if (gainedXp > 0) {
       setFarmXp(prevXp => {
         let newXp = prevXp + gainedXp;
-        let currentLevel = farmLevel;
+        let currentLevel = farmLevel; // Use a mutable variable for current level calculations
         let xpNeededForNext = calculateXpToNextLevel(currentLevel);
 
         while (newXp >= xpNeededForNext) {
           currentLevel++;
           newXp -= xpNeededForNext;
           xpNeededForNext = calculateXpToNextLevel(currentLevel);
+          // This toast is inside the loop, so it will fire for each level up if multiple levels are gained at once.
           toast({
             title: "Farm Level Up!",
             description: `Congratulations! Your farm reached level ${currentLevel}!`,
             variant: "default"
           });
         }
+        // After the loop, update the state with the final calculated level and XP.
         setFarmLevel(currentLevel);
         return newXp;
       });
     }
+
+    // Toast for harvest confirmation should be outside XP logic or use a separate toast
+    // to avoid conflict if level up toast is also shown.
+    // For simplicity, we show it after potential level-up toasts.
+    // If you want a single toast, you might need to combine messages.
+    toast({
+      title: `Harvested ${crop.name}!`,
+      description: "It's now in your sell market inventory.",
+    });
+
   }, [toast, farmLevel, calculateXpToNextLevel, currentFarmId]);
 
   const handleSellCrop = useCallback((cropIdToSell: string, quantity: number) => {
@@ -360,7 +375,7 @@ export default function HarvestClickerPage() {
       title: `Sold ${quantity} ${crop.name}(s)!`,
       description: `You earned ${effectiveSellPrice * quantity} gold.`,
     });
-  }, [harvestedInventory, toast, getEffectiveCropSellPrice]);
+  }, [harvestedInventory, toast, getEffectiveCropSellPrice, upgrades.negotiationSkills]);
 
   const handleBuyUpgrade = useCallback((upgradeId: UpgradeId) => {
     const upgradeToBuy = UPGRADES_DATA.find(u => u.id === upgradeId);
@@ -382,16 +397,16 @@ export default function HarvestClickerPage() {
     setUpgrades(prevUpgrades => ({ ...prevUpgrades, [upgradeId]: true }));
 
     if (upgradeId === 'unlockFarm2') {
-      setFarms(prevFarms => [
-        ...prevFarms,
-        { id: 'farm-2', name: 'Farm 2', plots: generateInitialPlots(INITIAL_NUM_PLOTS, 'farm-2') }
-      ]);
+      setFarms(prevFarms => {
+        if (prevFarms.find(f => f.id === 'farm-2')) return prevFarms; // Already exists
+        return [...prevFarms, { id: 'farm-2', name: 'Farm 2', plots: generateInitialPlots(INITIAL_NUM_PLOTS, 'farm-2') }];
+      });
       toast({ title: "Farm 2 Unlocked!", description: `You bought ${upgradeToBuy.name} for ${upgradeToBuy.cost} gold.` });
     } else if (upgradeId === 'unlockFarm3') {
-      setFarms(prevFarms => [
-        ...prevFarms,
-        { id: 'farm-3', name: 'Farm 3', plots: generateInitialPlots(INITIAL_NUM_PLOTS, 'farm-3') }
-      ]);
+      setFarms(prevFarms => {
+        if (prevFarms.find(f => f.id === 'farm-3')) return prevFarms; // Already exists
+        return [...prevFarms, { id: 'farm-3', name: 'Farm 3', plots: generateInitialPlots(INITIAL_NUM_PLOTS, 'farm-3') }];
+      });
       toast({ title: "Farm 3 Unlocked!", description: `You bought ${upgradeToBuy.name} for ${upgradeToBuy.cost} gold.` });
     } else {
       toast({ title: "Upgrade Purchased!", description: `You bought ${upgradeToBuy.name} for ${upgradeToBuy.cost} gold.` });
@@ -426,65 +441,73 @@ export default function HarvestClickerPage() {
 
 
   const handleFeedNeitt = useCallback((instanceId: string) => {
+    let canFeedGlobal = false; // To track if feeding was successful for the toast message
+
     setOwnedNeitts(prevOwnedNeitts =>
-      prevOwnedNeitts.map(n => {
-        if (n.instanceId !== instanceId) return n;
+        prevOwnedNeitts.map(n => {
+            if (n.instanceId !== instanceId) return n;
 
-        const neittInstance = n;
-        const neittType = NEITTS_DATA.find(nt => nt.id === neittInstance.neittTypeId);
-        if (!neittType) {
-            toast({ title: "Neitt type error!", variant: "destructive" });
-            return n;
-        }
-
-        if (neittInstance.nitsLeftToProduce > 0) {
-            toast({ title: `${neittType.name} is already producing!`, description: "It's busy producing Nits." });
-            return n;
-        }
-
-        const requiredCrop = CROPS_DATA.find(c => c.id === neittType.feedCropId);
-        if (!requiredCrop) {
-            toast({ title: "Feeding Error", description: `Required feed crop (${neittType.feedCropId}) for ${neittType.name} not found.`, variant: "destructive" });
-            return n;
-        }
-
-        let canFeed = false;
-        setHarvestedInventory(prevInventory => {
-            const cropInInventoryIndex = prevInventory.findIndex(item => item.cropId === neittType.feedCropId);
-            if (cropInInventoryIndex > -1 && prevInventory[cropInInventoryIndex].quantity >= 1) {
-                canFeed = true;
-                const updatedInventory = [...prevInventory];
-                updatedInventory[cropInInventoryIndex] = {
-                    ...updatedInventory[cropInInventoryIndex],
-                    quantity: updatedInventory[cropInInventoryIndex].quantity - 1,
-                };
-                return updatedInventory.filter(item => item.quantity > 0);
+            const neittType = NEITTS_DATA.find(nt => nt.id === n.neittTypeId);
+            if (!neittType) {
+                // This toast will fire immediately if neittType is not found
+                toast({ title: "Neitt type error!", variant: "destructive" });
+                return n;
             }
-            return prevInventory;
-        });
 
-        if (!canFeed) {
-          toast({
-              title: `Not Enough ${requiredCrop.name}s!`,
-              description: `You need 1 ${requiredCrop.name} to feed ${neittType.name}.`,
-              variant: "destructive"
-          });
-          return n;
-        }
+            if (n.nitsLeftToProduce > 0) {
+                // This toast will fire immediately if already producing
+                toast({ title: `${neittType.name} is already producing!`, description: "It's busy producing Nits." });
+                return n;
+            }
 
-        const nitsToProduceThisCycle = Math.floor(Math.random() * (neittType.maxProductionCapacity - neittType.minProductionCapacity + 1)) + neittType.minProductionCapacity;
+            const requiredCrop = CROPS_DATA.find(c => c.id === neittType.feedCropId);
+            if (!requiredCrop) {
+                // This toast for missing crop definition
+                toast({ title: "Feeding Error", description: `Required feed crop for ${neittType.name} not found.`, variant: "destructive" });
+                return n;
+            }
 
-        toast({ title: `Fed ${neittType.name}!`, description: `Used 1 ${requiredCrop.name}. It will now produce ${nitsToProduceThisCycle} Nit(s).` });
+            let canFeedLocal = false;
+            setHarvestedInventory(currentInventory => {
+                const cropInInventoryIndex = currentInventory.findIndex(item => item.cropId === neittType.feedCropId);
+                if (cropInInventoryIndex > -1 && currentInventory[cropInInventoryIndex].quantity >= 1) {
+                    canFeedLocal = true;
+                    canFeedGlobal = true; // Update global tracker
+                    const updatedInventory = [...currentInventory];
+                    updatedInventory[cropInInventoryIndex] = {
+                        ...updatedInventory[cropInInventoryIndex],
+                        quantity: updatedInventory[cropInInventoryIndex].quantity - 1,
+                    };
+                    return updatedInventory.filter(item => item.quantity > 0);
+                }
+                return currentInventory;
+            });
 
-        return {
-          ...n,
-          nitsLeftToProduce: nitsToProduceThisCycle,
-          initialNitsForCycle: nitsToProduceThisCycle,
-          lastProductionCycleStartTime: Date.now(),
-        };
-      })
+            if (!canFeedLocal) {
+                 // Toast if not enough feed, will be shown after setHarvestedInventory runs
+                setTimeout(() => toast({
+                    title: `Not Enough ${requiredCrop.name}s!`,
+                    description: `You need 1 ${requiredCrop.name} to feed ${neittType.name}.`,
+                    variant: "destructive"
+                }), 0);
+                return n;
+            }
+            
+            // If successfully fed (canFeedLocal is true)
+            const nitsToProduceThisCycle = Math.floor(Math.random() * (neittType.maxProductionCapacity - neittType.minProductionCapacity + 1)) + neittType.minProductionCapacity;
+            
+            // Toast for successful feeding, also delayed slightly
+             setTimeout(() => toast({ title: `Fed ${neittType.name}!`, description: `Used 1 ${requiredCrop.name}. It will now produce ${nitsToProduceThisCycle} Nit(s).` }), 0);
+
+            return {
+                ...n,
+                nitsLeftToProduce: nitsToProduceThisCycle,
+                initialNitsForCycle: nitsToProduceThisCycle,
+                lastProductionCycleStartTime: Date.now(),
+            };
+        })
     );
-  }, [toast]);
+  }, [toast]); // Removed harvestedInventory from deps as it's handled via its own setter's callback
 
 
   const handleSellNit = useCallback((nitIdToSell: string, quantity: number) => {
@@ -625,9 +648,12 @@ export default function HarvestClickerPage() {
                 isHarvestable: p.isHarvestable || false,
             }));
             loadedFarms = [{ id: 'farm-1', name: 'Farm 1', plots: migratedFarm1Plots }];
+            // Migration logic for old 'expandFarm' to 'unlockFarm2'
             if (gameState.upgrades?.expandFarm && !gameState.upgrades?.unlockFarm2) {
-              loadedFarms.push({ id: 'farm-2', name: 'Farm 2', plots: generateInitialPlots(INITIAL_NUM_PLOTS, 'farm-2')});
-              if(gameState.upgrades) gameState.upgrades.unlockFarm2 = true;
+                if(!loadedFarms.find(f => f.id === 'farm-2')) { // ensure farm-2 is not already present
+                    loadedFarms.push({ id: 'farm-2', name: 'Farm 2', plots: generateInitialPlots(INITIAL_NUM_PLOTS, 'farm-2')});
+                }
+                if(gameState.upgrades) gameState.upgrades.unlockFarm2 = true; // Set the new flag
             }
           }
           setFarms(loadedFarms);
@@ -638,7 +664,7 @@ export default function HarvestClickerPage() {
           setOwnedSeeds(gameState.ownedSeeds || []);
 
           const loadedUpgrades = {...initialUpgradesState, ...gameState.upgrades};
-          if ('expandFarm' in loadedUpgrades) {
+          if ('expandFarm' in loadedUpgrades) { // Remove old 'expandFarm' key if it exists
             delete (loadedUpgrades as any).expandFarm;
           }
           setUpgrades(loadedUpgrades);
