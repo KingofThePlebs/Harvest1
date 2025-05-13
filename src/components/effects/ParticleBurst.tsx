@@ -29,13 +29,17 @@ interface ParticleBurstProps {
   gravity?: number;
 }
 
+// Define default props outside the component to ensure stable references
+const DEFAULT_PARTICLE_COLORS = ['hsl(var(--primary))', 'hsl(var(--accent))', '#FFDA63'];
+const DEFAULT_PARTICLE_SIZE_RANGE: [number, number] = [4, 8];
+
 const ParticleBurst: FC<ParticleBurstProps> = ({
   originX,
   originY,
   particleCount = 15,
   onAnimationComplete,
-  particleColors = ['hsl(var(--primary))', 'hsl(var(--accent))', '#FFDA63'],
-  particleSizeRange = [4, 8],
+  particleColors = DEFAULT_PARTICLE_COLORS,
+  particleSizeRange = DEFAULT_PARTICLE_SIZE_RANGE,
   duration = 700,
   maxInitialSpeed = 3,
   gravity = 0.08,
@@ -127,19 +131,11 @@ const ParticleBurst: FC<ParticleBurstProps> = ({
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current);
       }
-      // If component unmounts (e.g. parent sets particleBurstState to null)
-      // and animation hasn't naturally completed, we might call onAnimationComplete
-      // to ensure parent knows. However, parent is causing unmount, so it knows.
-      // Calling it here could cause issues if parent's onAnimationComplete handler
-      // is not idempotent or expects to be called only on natural completion.
-      // For now, rely on natural completion to call it.
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClient, particleCount, particleColors, particleSizeRange, duration, maxInitialSpeed, gravity, onAnimationComplete]);
 
   if (!isClient || particles.length === 0) {
-    // particles.length === 0 check prevents rendering briefly before particles are initialized
-    // or after they are cleared.
     return null;
   }
 
