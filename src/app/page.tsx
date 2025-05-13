@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -30,7 +29,7 @@ import {
 
 const INITIAL_CURRENCY = 10000;
 const INITIAL_NUM_PLOTS = 6;
-const SAVE_GAME_KEY = 'harvestClickerSaveData_v2.5_factories'; // Incremented version
+const SAVE_GAME_KEY = 'harvestClickerSaveData_v2.6_neitt_arrival'; // Incremented version
 
 const INITIAL_FARM_LEVEL = 1;
 const INITIAL_FARM_XP = 0;
@@ -39,11 +38,14 @@ const INITIAL_NEITT_SLAVER_XP = 0;
 const INITIAL_TRADER_LEVEL = 1;
 const INITIAL_TRADER_XP = 0;
 
-const INITIAL_MAX_NEITTS_ALLOWED = 2; // Initial Neitt capacity
-const ADDITIONAL_HOUSE_COST = 500; // Cost to increase max Neitts by 1
+const INITIAL_MAX_NEITTS_ALLOWED = 2; 
+const ADDITIONAL_HOUSE_COST = 500; 
 
-const FACTORY_PRODUCTION_DURATION = 45 * 1000; // 45 seconds
+const FACTORY_PRODUCTION_DURATION = 45 * 1000; 
 const FACTORY_GOLD_PER_NEITT_PER_CYCLE = 15;
+
+const NEITT_ARRIVAL_INTERVAL = 5 * 60 * 1000; // 5 minutes
+// const NEITT_ARRIVAL_INTERVAL = 15 * 1000; // For testing: 15 seconds
 
 
 const generateInitialPlots = (count: number, farmId: string): PlotState[] => {
@@ -59,7 +61,6 @@ const initialUpgradesState: UpgradesState = {
   bulkDiscount: false,
   unlockFarm2: false,
   unlockFarm3: false,
-  // buildHouse: false, // Removed, handled differently
 };
 
 const initialFarmsState: Farm[] = [
@@ -98,6 +99,10 @@ export default function HarvestClickerPage() {
 
   const [maxNeittsAllowed, setMaxNeittsAllowed] = useState<number>(INITIAL_MAX_NEITTS_ALLOWED);
   const [ownedProductionBuildings, setOwnedProductionBuildings] = useState<OwnedProductionBuilding[]>([]);
+  
+  const [lastNeittArrivalTime, setLastNeittArrivalTime] = useState<number>(0);
+  const [neittArrivalProgress, setNeittArrivalProgress] = useState<number>(0);
+  const [neittTimeRemaining, setNeittTimeRemaining] = useState<number>(NEITT_ARRIVAL_INTERVAL);
 
 
   useEffect(() => {
@@ -220,7 +225,7 @@ export default function HarvestClickerPage() {
 
       setOwnedNeitts(prevOwnedNeitts => {
         const nextOwnedNeitts = prevOwnedNeitts.map(neittInstance => {
-          if (neittInstance.assignedToBuildingInstanceId) { // Skip Neitts assigned to buildings for regular Nit production
+          if (neittInstance.assignedToBuildingInstanceId) { 
             return neittInstance;
           }
           if (neittInstance.nitsLeftToProduce <= 0) {
@@ -301,7 +306,7 @@ export default function HarvestClickerPage() {
   
       if (totalGoldEarnedThisTick > 0) {
         setCurrency(prev => prev + totalGoldEarnedThisTick);
-        setOwnedProductionBuildings(updatedBuildings); // Apply building updates
+        setOwnedProductionBuildings(updatedBuildings); 
         
         completedFactoriesDetails.forEach(detail => {
           toast({ 
@@ -310,12 +315,59 @@ export default function HarvestClickerPage() {
           });
         });
       }
-      // No 'else' needed to setOwnedProductionBuildings if only time would update for UI progress,
-      // as UI progress bar can calculate from lastProductionCycleTime and Date.now().
     }, 1000); 
   
     return () => clearInterval(factoryProductionTimer);
   }, [isClient, ownedProductionBuildings, toast]);
+
+  useEffect(() => { // Neitt Arrival Timer
+    if (!isClient) return;
+
+    if (ownedNeitts.length >= maxNeittsAllowed) {
+      setNeittArrivalProgress(0);
+      setNeittTimeRemaining(NEITT_ARRIVAL_INTERVAL);
+      return;
+    }
+
+    const timer = setInterval(() => {
+      const now = Date.now();
+      if (lastNeittArrivalTime === 0) { 
+          setLastNeittArrivalTime(now); 
+          return;
+      }
+
+      const elapsedTime = now - lastNeittArrivalTime;
+      
+      if (elapsedTime >= NEITT_ARRIVAL_INTERVAL) {
+        if (ownedNeitts.length < maxNeittsAllowed) {
+          const defaultNeittType = NEITTS_DATA[0]; 
+          if (defaultNeittType) {
+            const newNeittInstance: OwnedNeitt = {
+              instanceId: self.crypto.randomUUID(),
+              neittTypeId: defaultNeittType.id,
+              lastProductionCycleStartTime: 0,
+              nitsLeftToProduce: 0,
+              initialNitsForCycle: 0,
+              assignedToBuildingInstanceId: null,
+            };
+            setOwnedNeitts(prev => [...prev, newNeittInstance]);
+            toast({
+              title: "A New Neitt Arrived!",
+              description: `A ${defaultNeittType.name} has joined your settlement.`,
+            });
+          }
+        }
+        setLastNeittArrivalTime(now);
+        setNeittArrivalProgress(0);
+        setNeittTimeRemaining(NEITT_ARRIVAL_INTERVAL);
+      } else {
+        setNeittArrivalProgress((elapsedTime / NEITT_ARRIVAL_INTERVAL) * 100);
+        setNeittTimeRemaining(NEITT_ARRIVAL_INTERVAL - elapsedTime);
+      }
+    }, 1000); 
+
+    return () => clearInterval(timer);
+  }, [isClient, ownedNeitts.length, maxNeittsAllowed, lastNeittArrivalTime, toast]);
 
 
   const getEffectiveCropSeedPrice = useCallback((basePrice: number) => {
@@ -850,7 +902,7 @@ export default function HarvestClickerPage() {
         typeId: buildingTypeId,
         name: `${buildingTypeToBuild.name} ${prev.filter(b => b.typeId === buildingTypeId).length + 1}`,
         assignedNeittInstanceIds: [],
-        lastProductionCycleTime: 0, // Initialize for production
+        lastProductionCycleTime: 0, 
       }
     ]);
     toast({ title: `${buildingTypeToBuild.name} Built!`, description: `Paid ${buildingTypeToBuild.cost} gold. You can now assign Neitts to it.` });
@@ -875,7 +927,6 @@ export default function HarvestClickerPage() {
       return;
     }
 
-    // Assign the first available Neitt
     setOwnedProductionBuildings(prev =>
       prev.map(b => {
         if (b.instanceId === buildingInstanceId) {
@@ -906,7 +957,7 @@ export default function HarvestClickerPage() {
       return;
     }
 
-    const neittIdToRemove = building.assignedNeittInstanceIds[0]; // Remove the first one for simplicity
+    const neittIdToRemove = building.assignedNeittInstanceIds[0]; 
 
     setOwnedProductionBuildings(prev =>
       prev.map(b =>
@@ -952,8 +1003,9 @@ export default function HarvestClickerPage() {
         gameStartTime,
         activeQuests,
         lastQuestGenerationTime,
-        maxNeittsAllowed, // Save new housing state
-        ownedProductionBuildings, // Save production buildings state
+        maxNeittsAllowed,
+        ownedProductionBuildings,
+        lastNeittArrivalTime, 
       };
       localStorage.setItem(SAVE_GAME_KEY, JSON.stringify(gameState));
       toast({
@@ -974,7 +1026,7 @@ export default function HarvestClickerPage() {
       farmLevel, farmXp, neittSlaverLevel, neittSlaverXp, traderLevel, traderXp,
       totalMoneySpent, totalCropsHarvested, totalNeittsFed, gameStartTime,
       activeQuests, lastQuestGenerationTime,
-      maxNeittsAllowed, ownedProductionBuildings, // Added to save
+      maxNeittsAllowed, ownedProductionBuildings, lastNeittArrivalTime, 
       toast, isClient
   ]);
 
@@ -1001,8 +1053,12 @@ export default function HarvestClickerPage() {
     setGameStartTime(Date.now());
     setActiveQuests([]);
     setLastQuestGenerationTime(Date.now());
-    setMaxNeittsAllowed(INITIAL_MAX_NEITTS_ALLOWED); // Reset new housing state
-    setOwnedProductionBuildings([]); // Reset production buildings
+    setMaxNeittsAllowed(INITIAL_MAX_NEITTS_ALLOWED); 
+    setOwnedProductionBuildings([]); 
+    setLastNeittArrivalTime(Date.now()); 
+    setNeittArrivalProgress(0);
+    setNeittTimeRemaining(NEITT_ARRIVAL_INTERVAL);
+
     if (showToast) {
       toast({
         title: "Game Reset",
@@ -1050,7 +1106,7 @@ export default function HarvestClickerPage() {
                   isHarvestable: p.isHarvestable || false,
               })) : generateInitialPlots(INITIAL_NUM_PLOTS, farm.id)
             }));
-          } else if (Array.isArray(gameState.plots)) { // Legacy save structure for plots
+          } else if (Array.isArray(gameState.plots)) { 
             const migratedFarm1Plots = gameState.plots.map((p: any, idx: number) => ({
                 id: p.id || `farm-1-plot-${idx+1}`,
                 cropId: p.cropId,
@@ -1058,7 +1114,7 @@ export default function HarvestClickerPage() {
                 isHarvestable: p.isHarvestable || false,
             }));
             loadedFarms = [{ id: 'farm-1', name: 'Farm 1', plots: migratedFarm1Plots }];
-            if (gameState.upgrades?.expandFarm && !gameState.upgrades?.unlockFarm2) { // Legacy farm expansion
+            if (gameState.upgrades?.expandFarm && !gameState.upgrades?.unlockFarm2) { 
                 if(!loadedFarms.find(f => f.id === 'farm-2')) {
                     loadedFarms.push({ id: 'farm-2', name: 'Farm 2', plots: generateInitialPlots(INITIAL_NUM_PLOTS, 'farm-2')});
                 }
@@ -1073,10 +1129,10 @@ export default function HarvestClickerPage() {
           setOwnedSeeds(gameState.ownedSeeds || []);
 
           const loadedUpgrades = {...initialUpgradesState, ...gameState.upgrades};
-          if ('expandFarm' in loadedUpgrades) { // Legacy upgrade
+          if ('expandFarm' in loadedUpgrades) { 
             delete (loadedUpgrades as any).expandFarm;
           }
-          if ('buildHouse' in loadedUpgrades) { // Legacy upgrade
+          if ('buildHouse' in loadedUpgrades) { 
             delete (loadedUpgrades as any).buildHouse;
           }
           setUpgrades(loadedUpgrades);
@@ -1113,12 +1169,12 @@ export default function HarvestClickerPage() {
           }));
           setOwnedProductionBuildings(loadedOwnedBuildings);
 
+          setLastNeittArrivalTime(gameState.lastNeittArrivalTime || Date.now());
 
-          // Handle legacy neittHouseMoveIn and neittsInTown - can be removed in future versions if not needed
-          if (gameState.upgrades?.buildHouse && !gameState.maxNeittsAllowed) { // If old save with buildHouse upgrade
-             setMaxNeittsAllowed(INITIAL_MAX_NEITTS_ALLOWED +1); // Give them the benefit of the old house
+
+          if (gameState.upgrades?.buildHouse && !gameState.maxNeittsAllowed) { 
+             setMaxNeittsAllowed(INITIAL_MAX_NEITTS_ALLOWED +1); 
           }
-          // Remove neittHouseMoveIn and neittsInTown state loading as they are deprecated.
 
 
           let loadedOwnedNeittsFromState: any[] = gameState.ownedNeitts || [];
@@ -1310,6 +1366,10 @@ export default function HarvestClickerPage() {
             maxNeittsAllowed={maxNeittsAllowed}
             onBuildAdditionalHouse={handleBuildAdditionalHouse}
             ADDITIONAL_HOUSE_COST={ADDITIONAL_HOUSE_COST}
+            neittArrivalProgress={neittArrivalProgress}
+            neittTimeRemaining={neittTimeRemaining}
+            NEITT_ARRIVAL_INTERVAL={NEITT_ARRIVAL_INTERVAL}
+
 
             productionBuildingTypesData={PRODUCTION_BUILDING_TYPES_DATA}
             ownedProductionBuildings={ownedProductionBuildings}
@@ -1359,3 +1419,4 @@ export default function HarvestClickerPage() {
     </div>
   );
 }
+

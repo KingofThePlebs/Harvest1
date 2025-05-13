@@ -1,4 +1,3 @@
-
 import type { FC } from 'react';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
@@ -10,7 +9,7 @@ import { PRODUCTION_BUILDING_TYPES_DATA } from '@/config/productionBuildings'; /
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIconLucide, Star, BarChart3, Clock, Users, DollarSign, HeartPulse, ScrollText, CheckSquare, Hammer, Home, Landmark, Factory as FactoryIcon, PlusCircle, MinusCircle } from 'lucide-react';
+import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIconLucide, Star, BarChart3, Clock, Users, DollarSign, HeartPulse, ScrollText, CheckSquare, Hammer, Home, Landmark, Factory as FactoryIcon, PlusCircle, MinusCircle, Hourglass } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
@@ -75,6 +74,10 @@ interface InventoryAndShopProps {
   maxNeittsAllowed: number;
   onBuildAdditionalHouse: () => void;
   ADDITIONAL_HOUSE_COST: number;
+  neittArrivalProgress: number;
+  neittTimeRemaining: number;
+  NEITT_ARRIVAL_INTERVAL: number;
+
 
   productionBuildingTypesData: ProductionBuildingType[];
   ownedProductionBuildings: OwnedProductionBuilding[];
@@ -134,6 +137,9 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   maxNeittsAllowed,
   onBuildAdditionalHouse,
   ADDITIONAL_HOUSE_COST,
+  neittArrivalProgress,
+  neittTimeRemaining,
+  NEITT_ARRIVAL_INTERVAL,
   productionBuildingTypesData,
   ownedProductionBuildings,
   onBuildProductionBuilding,
@@ -153,13 +159,13 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
    const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && FACTORY_PRODUCTION_DURATION > 0) { // Ensure window is defined and duration is positive
+    if (typeof window !== 'undefined' && (FACTORY_PRODUCTION_DURATION > 0 || NEITT_ARRIVAL_INTERVAL > 0) ) { 
       const interval = setInterval(() => {
         setTick(prevTick => prevTick + 1);
-      }, 500); // Update every 500ms for smoother progress bars
+      }, 500); 
       return () => clearInterval(interval);
     }
-  }, [FACTORY_PRODUCTION_DURATION]);
+  }, [FACTORY_PRODUCTION_DURATION, NEITT_ARRIVAL_INTERVAL]);
 
 
   const farmProgressPercent = xpForNextLevel > 0 ? (farmXp / xpForNextLevel) * 100 : 0;
@@ -192,6 +198,17 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   };
 
   const unassignedNeittsCount = ownedNeitts.filter(n => !n.assignedToBuildingInstanceId).length;
+
+  const formatTime = (ms: number) => {
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    if (hours > 0) {
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  };
 
 
   return (
@@ -584,13 +601,32 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                         <CardTitle className="text-lg flex items-center gap-2"><HomeIconLucide className="w-5 h-5" /> Housing</CardTitle>
                     </CardHeader>
                     <CardContent>
-                       <p className="text-sm text-muted-foreground mb-2">
+                       <p className="text-sm text-muted-foreground mb-1">
                          Increase the maximum number of Neitts you can house.
+                       </p>
+                       <p className="text-sm text-muted-foreground mb-2">
                          Current Neitt Capacity: {ownedNeitts.length} / {maxNeittsAllowed}
                        </p>
-                       <Button onClick={onBuildAdditionalHouse} disabled={currency < ADDITIONAL_HOUSE_COST} className="w-full">
+                       <Button onClick={onBuildAdditionalHouse} disabled={currency < ADDITIONAL_HOUSE_COST} className="w-full mb-3">
                            <Home className="w-4 h-4 mr-2"/>Expand Housing (<Coins className="inline w-3 h-3 mr-0.5" />{ADDITIONAL_HOUSE_COST})
                        </Button>
+                       {ownedNeitts.length < maxNeittsAllowed && NEITTS_DATA.length > 0 && (
+                         <div>
+                           <div className="flex items-center justify-between mb-1">
+                             <span className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+                               <Hourglass className="w-4 h-4" /> Next Neitt arriving in:
+                             </span>
+                             <span className="text-sm font-semibold">{formatTime(neittTimeRemaining)}</span>
+                           </div>
+                           <Progress value={neittArrivalProgress} className="w-full h-3" />
+                         </div>
+                       )}
+                       {ownedNeitts.length >= maxNeittsAllowed && (
+                          <p className="text-sm text-green-600 text-center font-semibold">Housing at maximum capacity!</p>
+                       )}
+                       {NEITTS_DATA.length === 0 && ownedNeitts.length < maxNeittsAllowed && (
+                          <p className="text-sm text-orange-600 text-center font-semibold">No Neitt types available to arrive.</p>
+                       )}
                     </CardContent>
                 </Card>
 
