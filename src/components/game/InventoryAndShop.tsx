@@ -2,13 +2,15 @@
 import type { FC } from 'react';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import type { InventoryItem, Crop, UpgradeDefinition, UpgradesState, UpgradeId, NeittType, OwnedNeitt, Nit, OwnedNit, Farm, Quest, QuestItemRequirement } from '@/types';
-import { CROPS_DATA } from '@/config/crops'; 
-import { NITS_DATA } from '@/config/nits'; 
+import type { InventoryItem, Crop, UpgradeDefinition, UpgradesState, UpgradeId, NeittType, OwnedNeitt, Nit, OwnedNit, Farm, Quest, ProductionBuildingType, OwnedProductionBuilding } from '@/types';
+import { CROPS_DATA } from '@/config/crops';
+import { NITS_DATA } from '@/config/nits';
+import { NEITTS_DATA } from '@/config/neitts'; // For Neitt details
+import { PRODUCTION_BUILDING_TYPES_DATA } from '@/config/productionBuildings'; // For building details
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIconLucide, Star, BarChart3, Clock, Users, DollarSign, HeartPulse, ScrollText, CheckSquare, Hammer, Home, Landmark } from 'lucide-react';
+import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIconLucide, Star, BarChart3, Clock, Users, DollarSign, HeartPulse, ScrollText, CheckSquare, Hammer, Home, Landmark, Factory as FactoryIcon } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
@@ -31,8 +33,8 @@ interface InventoryAndShopProps {
   onSelectSeedForPlanting: (seedId: string) => void;
   selectedSeedId?: string;
   currency: number;
-  upgradesData: UpgradeDefinition[]; // Will no longer contain 'buildHouse' by default
-  purchasedUpgrades: UpgradesState; // Still contains 'buildHouse' status
+  upgradesData: UpgradeDefinition[];
+  purchasedUpgrades: UpgradesState;
   onBuyUpgrade: (upgradeId: UpgradeId) => void;
   getEffectiveCropSellPrice: (basePrice: number) => number;
 
@@ -72,8 +74,14 @@ interface InventoryAndShopProps {
 
   neittHouseMoveIn: { startTime: number; duration: number; houseId: string } | null;
   neittsInTown: number;
-  onBuildHouse: () => void; // New prop for handling build house action
-  HOUSE_BUILD_COST: number; // New prop for displaying house cost
+  onBuildHouse: () => void;
+  HOUSE_BUILD_COST: number;
+
+  productionBuildingTypesData: ProductionBuildingType[];
+  ownedProductionBuildings: OwnedProductionBuilding[];
+  onBuildProductionBuilding: (buildingTypeId: string) => void;
+  onAssignNeittToBuilding: (neittInstanceId: string, buildingInstanceId: string) => void;
+  onUnassignNeittFromBuilding: (neittInstanceId: string) => void;
 }
 
 const tabDefinitions: TabDefinition[] = [
@@ -92,7 +100,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   onSelectSeedForPlanting,
   selectedSeedId,
   currency,
-  upgradesData, // Note: This prop still exists but 'buildHouse' is filtered out before passing
+  upgradesData,
   purchasedUpgrades,
   onBuyUpgrade,
   getEffectiveCropSellPrice,
@@ -103,7 +111,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   producedNits,
   nitsData,
   onSellNit,
-  cropsData, 
+  cropsData,
   farmLevel,
   farmXp,
   xpForNextLevel,
@@ -126,18 +134,26 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   neittsInTown,
   onBuildHouse,
   HOUSE_BUILD_COST,
+  productionBuildingTypesData,
+  ownedProductionBuildings,
+  onBuildProductionBuilding,
+  onAssignNeittToBuilding,
+  onUnassignNeittFromBuilding,
 }) => {
   const getCropById = (cropId: string): Crop | undefined => cropsData.find(c => c.id === cropId);
   const getNitById = (nitId: string): Nit | undefined => nitsData.find(n => n.id === nitId);
+  const getNeittTypeById = (typeId: string): NeittType | undefined => neittsData.find(n => n.id === typeId);
+  const getBuildingTypeById = (typeId: string): ProductionBuildingType | undefined => productionBuildingTypesData.find(b => b.id === typeId);
+
 
   const [activeTab, setActiveTab] = useState(tabDefinitions[1].id);
   const isMobile = useIsMobile();
-   const [tick, setTick] = useState(0); // Used to force re-render for progress bars
+   const [tick, setTick] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setTick(prevTick => prevTick + 1);
-    }, 500); 
+    }, 500);
     return () => clearInterval(interval);
   }, []);
 
@@ -147,15 +163,10 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   const traderProgressPercent = xpForNextTraderLevel > 0 ? (traderXp / xpForNextTraderLevel) * 100 : 0;
   const currentFarmName = farms.find(f => f.id === currentFarmId)?.name || "Farm";
 
-  // Filter out 'buildHouse' from general upgrades if it's still in purchasedUpgrades (for display of already bought ones if needed)
-  // Or, ensure UPGRADES_DATA itself doesn't contain 'buildHouse'
   const availableUpgrades = upgradesData.filter(upgrade => {
-    // 'buildHouse' is no longer an "upgrade" to be bought from this list.
-    // Its purchase is handled directly in the Town > Housing section.
     if (upgrade.id === 'unlockFarm2' || upgrade.id === 'unlockFarm3') {
         return !purchasedUpgrades[upgrade.id] && (upgrade.isUnlocked ? upgrade.isUnlocked(purchasedUpgrades) : true);
     }
-    // For other general upgrades
     return upgrade.isUnlocked ? upgrade.isUnlocked(purchasedUpgrades) : true;
   });
 
@@ -175,6 +186,8 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
     }
     return true;
   };
+
+  const unassignedNeitts = ownedNeitts.filter(n => !n.assignedToBuildingInstanceId);
 
 
   return (
@@ -298,7 +311,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                     {Math.max(0, xpForNextLevel - farmXp)} XP to next level
                   </p>
                 </div>
-                
+
                 <Separator/>
 
                 <div className="flex items-center justify-between">
@@ -454,7 +467,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                           return (
                             <li key={`nit-${item.nitId}`} className="flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm hover:bg-secondary/50">
                               <div className="flex items-center space-x-3">
-                                {nit.imageUrl && typeof nit.imageUrl === 'object' ? ( 
+                                {nit.imageUrl && typeof nit.imageUrl === 'object' ? (
                                   <Image src={nit.imageUrl} alt={nit.name} width={32} height={32} className="object-contain rounded-md" data-ai-hint={nit.dataAiHint}/>
                                 ) : (
                                   <NitIconComponent className="w-8 h-8 text-purple-500" />
@@ -497,7 +510,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                   <span>Your Gold: {currency}</span>
               </div>
               <ul className="space-y-3">
-                {availableUpgrades.map(upgrade => { // 'buildHouse' is already filtered out from upgradesData by page.tsx
+                {availableUpgrades.map(upgrade => {
                   const UpgradeIcon = upgrade.icon;
                   const isPurchased = purchasedUpgrades[upgrade.id];
                   const canAfford = currency >= upgrade.cost;
@@ -528,7 +541,6 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                     </li>
                   );
                 })}
-                 {/* Display purchased farm expansion upgrades if they exist */}
                  {upgradesData.filter(u => (u.id === 'unlockFarm2' && purchasedUpgrades.unlockFarm2) || (u.id === 'unlockFarm3' && purchasedUpgrades.unlockFarm3)).map(purchasedFarmUpgrade => (
                      <li key={`${purchasedFarmUpgrade.id}-purchased`} className="flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm opacity-70">
                         <div className="flex items-center space-x-3">
@@ -578,9 +590,9 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                         ) : neittHouseMoveIn ? (
                             <div>
                                 <p className="text-sm text-muted-foreground">A Neitt is moving in!</p>
-                                <Progress 
-                                    value={Math.min(100, ((Date.now() - neittHouseMoveIn.startTime) / neittHouseMoveIn.duration) * 100)} 
-                                    className="w-full h-3 mt-2" 
+                                <Progress
+                                    value={Math.min(100, ((Date.now() - neittHouseMoveIn.startTime) / neittHouseMoveIn.duration) * 100)}
+                                    className="w-full h-3 mt-2"
                                 />
                                 <p className="text-xs text-muted-foreground mt-1 text-center">
                                     {`${Math.floor(Math.max(0, neittHouseMoveIn.duration - (Date.now() - neittHouseMoveIn.startTime))/1000)}s remaining`}
@@ -589,7 +601,6 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                         ) : (
                             <p className="text-sm text-muted-foreground">
                                 Town Population: {neittsInTown} Neitt(s).
-                                {/* TODO: Add logic for more houses later */}
                             </p>
                         )}
                     </CardContent>
@@ -597,14 +608,89 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
 
                 <Card className="hover:shadow-md transition-shadow">
                     <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2"><Hammer className="w-5 h-5" /> Production Buildings</CardTitle>
+                        <CardTitle className="text-lg flex items-center gap-2"><FactoryIcon className="w-5 h-5" /> Production Buildings</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-muted-foreground">Construct buildings to automate or enhance production. Assign your Neitts to work in them!</p>
+                    <CardContent className="space-y-4">
+                        <div>
+                            <h4 className="text-md font-semibold mb-2">Available to Build:</h4>
+                            {productionBuildingTypesData.map(buildingType => (
+                                <Card key={buildingType.id} className="mb-2 p-3 bg-secondary/20">
+                                    <div className="flex justify-between items-center">
+                                        <div>
+                                            <p className="font-semibold">{buildingType.name}</p>
+                                            <p className="text-xs text-muted-foreground">{buildingType.description}</p>
+                                            <p className="text-xs text-muted-foreground">Capacity: {buildingType.capacity} Neitts</p>
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            onClick={() => onBuildProductionBuilding(buildingType.id)}
+                                            disabled={currency < buildingType.cost}
+                                        >
+                                            Build (<Coins className="inline w-3 h-3 mr-0.5" />{buildingType.cost})
+                                        </Button>
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+                        <Separator/>
+                        <div>
+                            <h4 className="text-md font-semibold mb-2">Your Buildings:</h4>
+                            {ownedProductionBuildings.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">You haven't built any production buildings yet.</p>
+                            ) : (
+                                ownedProductionBuildings.map(building => {
+                                    const buildingType = getBuildingTypeById(building.typeId);
+                                    if (!buildingType) return null;
+                                    return (
+                                    <Card key={building.instanceId} className="mb-3 p-4 bg-secondary/30">
+                                        <CardTitle className="text-md mb-2">{building.name} ({buildingType.name})</CardTitle>
+                                        <p className="text-xs text-muted-foreground mb-1">
+                                            Assigned Neitts: {building.assignedNeittInstanceIds.length} / {buildingType.capacity}
+                                        </p>
+                                        <div className="space-y-1 mb-2">
+                                            {building.assignedNeittInstanceIds.map(neittId => {
+                                                const assignedNeitt = ownedNeitts.find(n => n.instanceId === neittId);
+                                                const assignedNeittType = assignedNeitt ? getNeittTypeById(assignedNeitt.neittTypeId) : undefined;
+                                                return (
+                                                    <div key={neittId} className="flex justify-between items-center text-sm">
+                                                        <span>- {assignedNeittType?.name || 'Unknown Neitt'}</span>
+                                                        <Button variant="link" size="sm" className="h-auto p-0 text-xs text-destructive" onClick={() => onUnassignNeittFromBuilding(neittId)}>Unassign</Button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        {building.assignedNeittInstanceIds.length < buildingType.capacity && unassignedNeitts.length > 0 && (
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <Select
+                                                    onValueChange={(neittIdToAssign) => {
+                                                        if (neittIdToAssign) onAssignNeittToBuilding(neittIdToAssign, building.instanceId);
+                                                    }}
+                                                >
+                                                    <SelectTrigger className="flex-grow text-xs h-8">
+                                                        <SelectValue placeholder="Assign a Neitt..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {unassignedNeitts.map(neitt => {
+                                                            const neittType = getNeittTypeById(neitt.neittTypeId);
+                                                            return (
+                                                                <SelectItem key={neitt.instanceId} value={neitt.instanceId} className="text-xs">
+                                                                    {neittType?.name || 'Unknown Neitt'}
+                                                                </SelectItem>
+                                                            );
+                                                        })}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        )}
+                                         {building.assignedNeittInstanceIds.length < buildingType.capacity && unassignedNeitts.length === 0 && (
+                                            <p className="text-xs text-muted-foreground mt-1">No unassigned Neitts available.</p>
+                                        )}
+                                    </Card>
+                                    );
+                                })
+                            )}
+                        </div>
                     </CardContent>
-                    <CardFooter>
-                        <Button variant="outline" className="w-full" disabled>Manage Production (Coming Soon)</Button>
-                    </CardFooter>
                 </Card>
 
                 <Card className="hover:shadow-md transition-shadow">
@@ -618,7 +704,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                         <Button variant="outline" className="w-full" disabled>Coming Soon</Button>
                     </CardFooter>
                 </Card>
-                
+
                 <Separator className="my-6"/>
 
                 <CardTitle className="text-xl text-primary-foreground/80 flex items-center gap-2">
@@ -684,13 +770,16 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
             <CardContent className="space-y-6 pt-4">
               <div>
                 <CardTitle className="text-xl text-primary-foreground/80 mb-2">Your Neitt Pen</CardTitle>
-                <CardDescription className="mb-4">Feed your Neitts to have them produce Nits over time.</CardDescription>
+                <CardDescription className="mb-4">Feed your Neitts to have them produce Nits over time. Neitts assigned to buildings cannot be fed here.</CardDescription>
+                {ownedNeitts.filter(n => !n.assignedToBuildingInstanceId).length === 0 && ownedNeitts.length > 0 && (
+                     <p className="text-muted-foreground text-center py-4">All your Neitts are currently assigned to buildings.</p>
+                )}
                 {ownedNeitts.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-4">Your neitt pen is empty. Buy some neitts from the shop below!</p>
+                    <p className="text-muted-foreground text-center py-4">Your neitt pen is empty. Buy some neitts from the shop below!</p>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-2 bg-background/50 rounded-md">
-                    {ownedNeitts.map(ownedNeittInstance => {
-                      const neittDetails = neittsData.find(s => s.id === ownedNeittInstance.neittTypeId);
+                    {ownedNeitts.filter(n => !n.assignedToBuildingInstanceId).map(ownedNeittInstance => {
+                      const neittDetails = getNeittTypeById(ownedNeittInstance.neittTypeId);
                       if (!neittDetails) return null;
 
                       const NeittIcon = neittDetails.icon;
@@ -794,7 +883,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                           ) : <NeittIconLucide className="w-10 h-10 text-muted-foreground" /> }
                           <div className="flex-grow">
                             <p className="font-semibold">{neitt.name}</p>
-                            <p className="text-xs text-muted-foreground max-wxs truncate">{neitt.description}</p>
+                            <p className="text-xs text-muted-foreground max-w-xs truncate">{neitt.description}</p>
                              <p className="text-xs text-muted-foreground">Cost: <Coins className="inline w-3 h-3 mr-0.5" />{neitt.cost}</p>
                              <p className="text-xs text-muted-foreground">Produces: {nitsData.find(n=>n.id === neitt.producesNitId)?.name || 'Nit'} ({productionRange} per feed / {neitt.productionTime/1000}s each)</p>
                              {feedCropForShop && <p className="text-xs text-muted-foreground">Eats: {feedCropForShop.name}</p>}

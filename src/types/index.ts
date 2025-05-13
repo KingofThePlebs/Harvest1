@@ -48,8 +48,8 @@ export interface UpgradesState {
   fertilizer: boolean;
   negotiationSkills: boolean;
   bulkDiscount: boolean;
-  unlockFarm2: boolean; 
-  unlockFarm3: boolean; 
+  unlockFarm2: boolean;
+  unlockFarm3: boolean;
   buildHouse: boolean; // Added for building a house
 }
 
@@ -89,6 +89,7 @@ export interface OwnedNeitt { // Represents an individual Neitt instance
   lastProductionCycleStartTime: number; // Timestamp when the current *Nit's* production cycle started
   nitsLeftToProduce: number; // How many nits this Neitt will produce before needing to be fed again. 0 means hungry.
   initialNitsForCycle: number; // Total nits determined for the current feeding cycle
+  assignedToBuildingInstanceId?: string | null; // ID of the ProductionBuilding instance it's assigned to
 }
 
 export interface Nit {
@@ -132,4 +133,22 @@ export interface QuestTemplate {
     playerFarmLevel: number // To potentially scale difficulty or item availability
   ) => { requirements: QuestItemRequirement[], reward: number } | null; // Returns null if quest cannot be generated
   minFarmLevel?: number; // Minimum farm level to unlock this quest type
+}
+
+// Production Building System Types
+export interface ProductionBuildingType {
+  id: string; // e.g., 'factory_basic'
+  name: string;
+  description: string;
+  cost: number;
+  icon: LucideIcon;
+  capacity: number; // How many Neitts can work here
+  // Future: what it produces, input requirements, production time etc.
+}
+
+export interface OwnedProductionBuilding {
+  instanceId: string; // Unique ID for this specific built building
+  typeId: string; // Corresponds to ProductionBuildingType.id
+  name: string; // Can be user-defined or default (e.g. "Factory 1")
+  assignedNeittInstanceIds: string[]; // List of OwnedNeitt instance IDs assigned here
 }
