@@ -7,7 +7,7 @@ import { CROPS_DATA } from '@/config/crops';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIcon, Star, BarChart3, Clock, Users } from 'lucide-react';
+import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIcon, Star, BarChart3, Clock, Users, DollarSign } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
@@ -52,6 +52,9 @@ interface InventoryAndShopProps {
   neittSlaverLevel: number;
   neittSlaverXp: number;
   xpForNextNeittSlaverLevel: number;
+  traderLevel: number;
+  traderXp: number;
+  xpForNextTraderLevel: number;
 
 
   farms: Farm[];
@@ -98,6 +101,9 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   neittSlaverLevel,
   neittSlaverXp,
   xpForNextNeittSlaverLevel,
+  traderLevel,
+  traderXp,
+  xpForNextTraderLevel,
   farms,
   currentFarmId,
   onFarmChange,
@@ -113,6 +119,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
 
   const farmProgressPercent = xpForNextLevel > 0 ? (farmXp / xpForNextLevel) * 100 : 0;
   const neittSlaverProgressPercent = xpForNextNeittSlaverLevel > 0 ? (neittSlaverXp / xpForNextNeittSlaverLevel) * 100 : 0;
+  const traderProgressPercent = xpForNextTraderLevel > 0 ? (traderXp / xpForNextTraderLevel) * 100 : 0;
   const currentFarmName = farms.find(f => f.id === currentFarmId)?.name || "Farm";
 
   const availableUpgrades = upgradesData.filter(upgrade => {
@@ -249,7 +256,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-lg font-semibold">
-                    <Users className="w-5 h-5 text-purple-500" /> {/* Using Users icon for Neitt Slaver for now */}
+                    <Users className="w-5 h-5 text-purple-500" />
                     Neitt Slaver Level:
                   </div>
                   <span className="text-lg font-bold text-purple-500">{neittSlaverLevel}</span>
@@ -262,6 +269,26 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                   <Progress value={neittSlaverProgressPercent} className="w-full h-3" indicatorClassName="bg-purple-500" />
                   <p className="text-xs text-muted-foreground mt-1 text-center">
                     {Math.max(0, xpForNextNeittSlaverLevel - neittSlaverXp)} XP to next level
+                  </p>
+                </div>
+
+                <Separator/>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-lg font-semibold">
+                    <DollarSign className="w-5 h-5 text-emerald-500" />
+                    Trader Level:
+                  </div>
+                  <span className="text-lg font-bold text-emerald-500">{traderLevel}</span>
+                </div>
+                 <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium text-muted-foreground">Trader XP:</span>
+                    <span className="text-sm font-semibold">{traderXp} / {xpForNextTraderLevel}</span>
+                  </div>
+                  <Progress value={traderProgressPercent} className="w-full h-3" indicatorClassName="bg-emerald-500" />
+                  <p className="text-xs text-muted-foreground mt-1 text-center">
+                    {Math.max(0, xpForNextTraderLevel - traderXp)} XP to next level
                   </p>
                 </div>
               </div>
@@ -296,7 +323,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
               </div>
 
               <CardDescription className="mt-4 text-sm">
-                Gain XP by harvesting crops. Leveling up your farm might unlock new features or bonuses in the future! Feed Neitts to level up your Neitt Slaver rank.
+                Gain XP by harvesting crops to level up your Farm. Feed Neitts to level up your Neitt Slaver rank. Sell items to improve your Trader level!
               </CardDescription>
 
             </CardContent>

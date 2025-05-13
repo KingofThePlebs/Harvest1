@@ -34,6 +34,8 @@ const INITIAL_FARM_LEVEL = 1;
 const INITIAL_FARM_XP = 0;
 const INITIAL_NEITT_SLAVER_LEVEL = 1;
 const INITIAL_NEITT_SLAVER_XP = 0;
+const INITIAL_TRADER_LEVEL = 1;
+const INITIAL_TRADER_XP = 0;
 
 
 const generateInitialPlots = (count: number, farmId: string): PlotState[] => {
@@ -73,6 +75,8 @@ export default function HarvestClickerPage() {
   const [farmXp, setFarmXp] = useState<number>(INITIAL_FARM_XP);
   const [neittSlaverLevel, setNeittSlaverLevel] = useState<number>(INITIAL_NEITT_SLAVER_LEVEL);
   const [neittSlaverXp, setNeittSlaverXp] = useState<number>(INITIAL_NEITT_SLAVER_XP);
+  const [traderLevel, setTraderLevel] = useState<number>(INITIAL_TRADER_LEVEL);
+  const [traderXp, setTraderXp] = useState<number>(INITIAL_TRADER_XP);
 
   // Statistics State
   const [totalMoneySpent, setTotalMoneySpent] = useState<number>(0);
@@ -329,11 +333,12 @@ export default function HarvestClickerPage() {
           currentLevel++;
           newXp -= xpNeededForNext;
           xpNeededForNext = calculateXpToNextLevel(currentLevel);
-          toast({
+          // Delayed toast to prevent issues if called during render or rapid state changes
+          setTimeout(() => toast({
             title: "Farm Level Up!",
             description: `Congratulations! Your farm reached level ${currentLevel}!`,
             variant: "default"
-          });
+          }), 0);
         }
         setFarmLevel(currentLevel);
         return newXp;
@@ -357,6 +362,7 @@ export default function HarvestClickerPage() {
     }
 
     const effectiveSellPrice = getEffectiveCropSellPrice(crop.sellPrice);
+    const earnedGold = effectiveSellPrice * quantity;
 
     setHarvestedInventory(prevInventory =>
       prevInventory
@@ -368,12 +374,37 @@ export default function HarvestClickerPage() {
         .filter(item => item.quantity > 0)
     );
 
-    setCurrency(prevCurrency => prevCurrency + effectiveSellPrice * quantity);
+    setCurrency(prevCurrency => prevCurrency + earnedGold);
+
+    // Add Trader XP
+    const gainedTraderXp = earnedGold; // 1 gold = 1 XP
+    if (gainedTraderXp > 0) {
+        setTraderXp(prevXp => {
+            let newXp = prevXp + gainedTraderXp;
+            let currentTraderLvl = traderLevel; // Use a local variable for current level within this update
+            let xpNeededForNext = calculateXpToNextLevel(currentTraderLvl);
+
+            while (newXp >= xpNeededForNext) {
+                currentTraderLvl++;
+                newXp -= xpNeededForNext;
+                xpNeededForNext = calculateXpToNextLevel(currentTraderLvl);
+                 // Delayed toast
+                setTimeout(() => toast({
+                    title: "Trader Level Up!",
+                    description: `Congratulations! Your Trader level reached ${currentTraderLvl}!`,
+                    variant: "default"
+                }), 0);
+            }
+            setTraderLevel(currentTraderLvl); // Update state after the loop
+            return newXp;
+        });
+    }
+
     toast({
       title: `Sold ${quantity} ${crop.name}(s)!`,
-      description: `You earned ${effectiveSellPrice * quantity} gold.`,
+      description: `You earned ${earnedGold} gold.`,
     });
-  }, [harvestedInventory, toast, getEffectiveCropSellPrice]);
+  }, [harvestedInventory, toast, getEffectiveCropSellPrice, traderLevel, calculateXpToNextLevel]);
 
   const handleBuyUpgrade = useCallback((upgradeId: UpgradeId) => {
     const upgradeToBuy = UPGRADES_DATA.find(u => u.id === upgradeId);
@@ -521,7 +552,7 @@ export default function HarvestClickerPage() {
         return newXp;
       });
     }
-  }, [toast, neittSlaverLevel, calculateXpToNextLevel]);
+  }, [toast, neittSlaverLevel, calculateXpToNextLevel, harvestedInventory]);
 
 
   const handleSellNit = useCallback((nitIdToSell: string, quantity: number) => {
@@ -538,6 +569,7 @@ export default function HarvestClickerPage() {
     }
 
     const sellPrice = nitInfo.sellPrice;
+    const earnedGold = sellPrice * quantity;
 
     setProducedNits(prevNits =>
       prevNits
@@ -549,12 +581,36 @@ export default function HarvestClickerPage() {
         .filter(item => item.quantity > 0)
     );
 
-    setCurrency(prevCurrency => prevCurrency + sellPrice * quantity);
+    setCurrency(prevCurrency => prevCurrency + earnedGold);
+
+    // Add Trader XP
+    const gainedTraderXp = earnedGold; // 1 gold = 1 XP
+    if (gainedTraderXp > 0) {
+        setTraderXp(prevXp => {
+            let newXp = prevXp + gainedTraderXp;
+            let currentTraderLvl = traderLevel; // Use a local variable
+            let xpNeededForNext = calculateXpToNextLevel(currentTraderLvl);
+
+            while (newXp >= xpNeededForNext) {
+                currentTraderLvl++;
+                newXp -= xpNeededForNext;
+                xpNeededForNext = calculateXpToNextLevel(currentTraderLvl);
+                setTimeout(() => toast({
+                    title: "Trader Level Up!",
+                    description: `Congratulations! Your Trader level reached ${currentTraderLvl}!`,
+                    variant: "default"
+                }), 0);
+            }
+            setTraderLevel(currentTraderLvl); // Update state after the loop
+            return newXp;
+        });
+    }
+
     toast({
       title: `Sold ${quantity} ${nitInfo.name}(s)!`,
-      description: `You earned ${sellPrice * quantity} gold.`,
+      description: `You earned ${earnedGold} gold.`,
     });
-  }, [producedNits, toast]);
+  }, [producedNits, toast, traderLevel, calculateXpToNextLevel]);
 
 
   const saveGame = useCallback(() => {
@@ -574,6 +630,8 @@ export default function HarvestClickerPage() {
         farmXp,
         neittSlaverLevel,
         neittSlaverXp,
+        traderLevel,
+        traderXp,
         totalMoneySpent,
         totalCropsHarvested,
         gameStartTime,
@@ -591,7 +649,7 @@ export default function HarvestClickerPage() {
         variant: "destructive",
       });
     }
-  }, [farms, currentFarmId, currency, harvestedInventory, ownedSeeds, upgrades, ownedNeitts, producedNits, selectedSeedFromOwnedId, farmLevel, farmXp, neittSlaverLevel, neittSlaverXp, totalMoneySpent, totalCropsHarvested, gameStartTime, toast, isClient]);
+  }, [farms, currentFarmId, currency, harvestedInventory, ownedSeeds, upgrades, ownedNeitts, producedNits, selectedSeedFromOwnedId, farmLevel, farmXp, neittSlaverLevel, neittSlaverXp, traderLevel, traderXp, totalMoneySpent, totalCropsHarvested, gameStartTime, toast, isClient]);
 
   const resetGameStates = useCallback((showToast: boolean = true) => {
     const farm1Plots = generateInitialPlots(INITIAL_NUM_PLOTS, 'farm-1');
@@ -608,6 +666,8 @@ export default function HarvestClickerPage() {
     setFarmXp(INITIAL_FARM_XP);
     setNeittSlaverLevel(INITIAL_NEITT_SLAVER_LEVEL);
     setNeittSlaverXp(INITIAL_NEITT_SLAVER_XP);
+    setTraderLevel(INITIAL_TRADER_LEVEL);
+    setTraderXp(INITIAL_TRADER_XP);
     setTotalMoneySpent(0);
     setTotalCropsHarvested(0);
     setGameStartTime(Date.now());
@@ -691,6 +751,8 @@ export default function HarvestClickerPage() {
           setFarmXp(gameState.farmXp || INITIAL_FARM_XP);
           setNeittSlaverLevel(gameState.neittSlaverLevel || INITIAL_NEITT_SLAVER_LEVEL);
           setNeittSlaverXp(gameState.neittSlaverXp || INITIAL_NEITT_SLAVER_XP);
+          setTraderLevel(gameState.traderLevel || INITIAL_TRADER_LEVEL);
+          setTraderXp(gameState.traderXp || INITIAL_TRADER_XP);
 
 
           // Load Statistics
@@ -816,6 +878,7 @@ export default function HarvestClickerPage() {
 
   const xpForNextFarmLevel = calculateXpToNextLevel(farmLevel);
   const xpForNextNeittSlaverLevel = calculateXpToNextLevel(neittSlaverLevel);
+  const xpForNextTraderLevel = calculateXpToNextLevel(traderLevel);
   const currentFarm = farms.find(f => f.id === currentFarmId);
   const currentFarmPlots = currentFarm?.plots || [];
   const currentFarmName = currentFarm?.name || "Farm";
@@ -873,6 +936,9 @@ export default function HarvestClickerPage() {
             neittSlaverLevel={neittSlaverLevel}
             neittSlaverXp={neittSlaverXp}
             xpForNextNeittSlaverLevel={xpForNextNeittSlaverLevel}
+            traderLevel={traderLevel}
+            traderXp={traderXp}
+            xpForNextTraderLevel={xpForNextTraderLevel}
 
 
             farms={farms}
