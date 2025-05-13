@@ -135,9 +135,12 @@ let memoryState: State = { toasts: [] }
 
 function dispatch(action: Action) {
   memoryState = reducer(memoryState, action)
-  listeners.forEach((listener) => {
-    listener(memoryState)
-  })
+  // Schedule listeners to be called asynchronously to avoid updates during render
+  setTimeout(() => {
+    listeners.forEach((listener) => {
+      listener(memoryState)
+    })
+  }, 0)
 }
 
 type Toast = Omit<ToasterToast, "id">
@@ -158,18 +161,12 @@ function toast({ ...props }: Toast) {
       ...props,
       id,
       open: true,
-      onOpenChange: (open) => { // `open` is the new state from the primitive
+      onOpenChange: (open) => { 
         if (!open) {
-          // Check if the toast is ALREADY marked as closed in our central state (memoryState)
-          // to prevent re-dispatching dismiss if the primitive calls onOpenChange(false)
-          // when our state already reflects open: false.
           const currentToastInGlobalState = memoryState.toasts.find(t => t.id === id);
           if (currentToastInGlobalState && currentToastInGlobalState.open) {
-            // If it was 'open: true' in our state, and now primitive says 'open: false', then dismiss.
             dismiss();
           }
-          // If currentToastInGlobalState.open is already false, or toast not found (e.g. already removed),
-          // do nothing, as we've already processed the dismiss or it's no longer relevant.
         }
       },
     },
@@ -193,7 +190,7 @@ function useToast() {
         listeners.splice(index, 1)
       }
     }
-  }, []) // Empty dependency array is correct here as setState from useState has a stable identity.
+  }, [])
 
   return {
     ...state,
