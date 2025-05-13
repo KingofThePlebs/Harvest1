@@ -1,3 +1,4 @@
+
 import type { FC } from 'react';
 import { useState } from 'react';
 import Image from 'next/image';
@@ -386,7 +387,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                     </li>
                   );
                 })}
-                 {UPGRADES_DATA.filter(u => (u.id === 'unlockFarm2' && purchasedUpgrades.unlockFarm2) || (u.id === 'unlockFarm3' && purchasedUpgrades.unlockFarm3)).map(purchasedFarmUpgrade => (
+                 {upgradesData.filter(u => (u.id === 'unlockFarm2' && purchasedUpgrades.unlockFarm2) || (u.id === 'unlockFarm3' && purchasedUpgrades.unlockFarm3)).map(purchasedFarmUpgrade => (
                      <li key={`${purchasedFarmUpgrade.id}-purchased`} className="flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm opacity-70">
                         <div className="flex items-center space-x-3">
                             <purchasedFarmUpgrade.icon className="w-8 h-8 text-blue-500 flex-shrink-0" />
