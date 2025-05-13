@@ -8,7 +8,7 @@ import { NITS_DATA } from '@/config/nits'; // Keep this if nitsData prop is remo
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIcon, Star, BarChart3, Clock, Users, DollarSign, HeartPulse, ScrollText, CheckSquare } from 'lucide-react';
+import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshake, Building, Leaf, Smile as NeittIconLucide, Gem, Bone, Home as HomeIcon, Star, BarChart3, Clock, Users, DollarSign, HeartPulse, ScrollText, CheckSquare, Hammer, Home } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
@@ -581,17 +581,41 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                     </div>
                 )}
                  <Separator className="my-6"/>
-                 <Card className="hover:shadow-md transition-shadow">
-                      <CardHeader>
-                          <CardTitle className="text-lg flex items-center gap-2"><ShoppingCart className="w-5 h-5" /> General Store</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                          <p className="text-sm text-muted-foreground">Stock up on supplies or find rare items.</p>
-                      </CardContent>
-                      <CardContent className="pt-0">
-                          <Button variant="outline" className="w-full" disabled>Coming Soon</Button>
-                      </CardContent>
-                  </Card>
+                 <div className="space-y-4">
+                    <Card className="hover:shadow-md transition-shadow">
+                        <CardHeader>
+                            <CardTitle className="text-lg flex items-center gap-2"><Home className="w-5 h-5" /> Housing</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-muted-foreground">Upgrade your living space or build new homes.</p>
+                        </CardContent>
+                        <CardFooter>
+                            <Button variant="outline" className="w-full" disabled>Coming Soon</Button>
+                        </CardFooter>
+                    </Card>
+                    <Card className="hover:shadow-md transition-shadow">
+                        <CardHeader>
+                            <CardTitle className="text-lg flex items-center gap-2"><Hammer className="w-5 h-5" /> Production Buildings</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-muted-foreground">Construct buildings to automate or enhance production.</p>
+                        </CardContent>
+                        <CardFooter>
+                            <Button variant="outline" className="w-full" disabled>Coming Soon</Button>
+                        </CardFooter>
+                    </Card>
+                     <Card className="hover:shadow-md transition-shadow">
+                        <CardHeader>
+                            <CardTitle className="text-lg flex items-center gap-2"><ShoppingCart className="w-5 h-5" /> General Store</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-muted-foreground">Stock up on supplies or find rare items.</p>
+                        </CardContent>
+                        <CardFooter>
+                            <Button variant="outline" className="w-full" disabled>Coming Soon</Button>
+                        </CardFooter>
+                    </Card>
+                 </div>
             </CardContent>
           </ScrollArea>
         </TabsContent>
@@ -743,3 +767,4 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
 };
 
 export default InventoryAndShop;
+
