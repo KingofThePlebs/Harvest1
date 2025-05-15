@@ -455,7 +455,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                                   <IconComponent className="w-8 h-8 text-green-600" />
                                 ) : <Leaf className="w-8 h-8 text-gray-400" />}
                                 <div>
-                                  <p className="font-semibold">{crop.name} <span className="text-xs text-muted-foreground">(Qty: {item.quantity})</span></p>
+                                  <p className="font-semibold">{crop.name} <span className="text-xs text-muted-foreground">({item.quantity})</span></p>
                                   <p className="text-xs text-muted-foreground">Sell Price: <Coins className="inline w-3 h-3 mr-0.5" />{effectiveSellPrice} each</p>
                                 </div>
                               </div>
