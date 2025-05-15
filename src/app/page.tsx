@@ -126,11 +126,12 @@ export default function HarvestClickerPage() {
         `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
       );
     }, 1000);
+    git init
 
     return () => clearInterval(timer);
   }, [gameStartTime, isClient]);
 
-  // Save game time to local storage when the component unloads
+  // Save game time to localll storage when the component unloads
   useEffect(() => {
     if (!isClient) return;
 
