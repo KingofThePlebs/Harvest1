@@ -112,7 +112,7 @@ export default function HarvestClickerPage() {
   }, []);
 
   useEffect(() => {
-    if (!isClient || gameStartTime === 0) return;
+    if (gameStartTime === 0 || !isClient) return;
 
     const timer = setInterval(() => {
       const now = Date.now();
@@ -128,6 +128,25 @@ export default function HarvestClickerPage() {
     }, 1000);
 
     return () => clearInterval(timer);
+  }, [gameStartTime, isClient]);
+
+  // Save game time to local storage when the component unloads
+  useEffect(() => {
+    if (!isClient) return;
+
+    const handleBeforeUnload = () => {
+      if (gameStartTime > 0) {
+        const now = Date.now();
+        const elapsed = now - gameStartTime;
+        localStorage.setItem('harvestClickerGameTime', elapsed.toString());
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
   }, [gameStartTime, isClient]);
 
 
@@ -1260,6 +1279,16 @@ export default function HarvestClickerPage() {
   useEffect(() => {
     if (isClient) {
       loadGame();
+
+      // Load saved game time
+      const savedGameTime = localStorage.getItem('harvestClickerGameTime');
+      if (savedGameTime) {
+        const elapsed = parseInt(savedGameTime, 10);
+        setGameStartTime(Date.now() - elapsed);
+        localStorage.removeItem('harvestClickerGameTime'); // Clear after loading
+      } else if (gameStartTime === 0) {
+        setGameStartTime(Date.now()); // Start a new timer if no saved time
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClient]);
