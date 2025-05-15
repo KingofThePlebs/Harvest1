@@ -28,7 +28,7 @@ const GameHeader: FC<GameHeaderProps> = ({ currency }) => {
             </Button>
           </a>
         </div>
-        <div className="flex items-center space-x-2 bg-primary/80 text-primary-foreground px-4 py-2 rounded-lg shadow-sm">
+        <div className="flex items-center space-x-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-sm">
           <Coins className="h-6 w-6" />
           <span className="text-xl font-semibold">{currency}</span>
         </div>

@@ -104,6 +104,8 @@ export default function HarvestClickerPage() {
   const [neittArrivalProgress, setNeittArrivalProgress] = useState<number>(0);
   const [neittTimeRemaining, setNeittTimeRemaining] = useState<number>(NEITT_ARRIVAL_INTERVAL);
 
+  const [isNightMode, setIsNightMode] = useState<boolean>(false);
+
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -111,6 +113,17 @@ export default function HarvestClickerPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!isClient) return;
+    const savedNightMode = localStorage.getItem('harvestClickerNightMode');
+    if (savedNightMode === 'true') {
+      setIsNightMode(true);
+      document.body.classList.add('dark');
+    } else {
+      setIsNightMode(false);
+      document.body.classList.remove('dark');
+    }
+  }, [isClient]);
   useEffect(() => {
     if (gameStartTime === 0 || !isClient) return;
 
@@ -126,7 +139,6 @@ export default function HarvestClickerPage() {
         `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
       );
     }, 1000);
-    git init
 
     return () => clearInterval(timer);
   }, [gameStartTime, isClient]);
@@ -1106,6 +1118,16 @@ export default function HarvestClickerPage() {
     }
   }, [isClient, resetGameStates, toast]);
 
+  const toggleNightMode = useCallback(() => {
+    if (!isClient) return;
+    setIsNightMode(prevMode => {
+      const newMode = !prevMode;
+      newMode ? document.body.classList.add('dark') : document.body.classList.remove('dark');
+      localStorage.setItem('harvestClickerNightMode', String(newMode));
+      return newMode;
+    });
+  }, [isClient]);
+
 
   const loadGame = useCallback(() => {
     if (!isClient) return;
@@ -1413,6 +1435,9 @@ export default function HarvestClickerPage() {
         <div className="pt-4 text-center space-y-2 sm:space-y-0 sm:flex sm:justify-center sm:space-x-2">
             <Button onClick={saveGame} variant="outline" className="flex items-center gap-2 mx-auto sm:mx-0 mb-2 sm:mb-0">
                 <Save className="w-4 h-4" /> Save Game
+            </Button>
+            <Button variant="outline" onClick={toggleNightMode} className="flex items-center gap-2 mx-auto sm:mx-0">
+              Night Mode
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
