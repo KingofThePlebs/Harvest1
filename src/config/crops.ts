@@ -17,7 +17,7 @@ export const CROPS_DATA: Crop[] = [
     id: 'carrot',
     name: 'Carrot',
     growTime: 5 * 1000, // 5 seconds
-    sellPrice: 5,
+    sellPrice: 2,
     seedPrice: 1,
     icon: Carrot,
     xpYield: 10, // Carrots give 10 XP per harvest
