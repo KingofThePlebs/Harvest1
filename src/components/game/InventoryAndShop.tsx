@@ -13,7 +13,7 @@ import { ShoppingCart, Package, Coins, TrendingUp, CheckCircle, Sprout, Handshak
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile'; 
 import MobileNavSheet from './MobileNavSheet';
 import type { TabDefinition } from './MobileNavSheet';
 import {
@@ -268,7 +268,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                           ) : <Leaf className="w-8 h-8 text-gray-400" />}
                           <div>
                             <p className="font-semibold">{crop.name}</p>
-                            <p className="text-xs text-muted-foreground">Quantity: {item.quantity}</p>
+                            <p className="text-xs text-muted-foreground">Quantity: {Math.ceil(item.quantity)}</p>
                           </div>
                         </div>
                         <Button
@@ -584,165 +584,6 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
         <TabsContent value="town">
           <ScrollArea className="h-[300px] sm:h-[400px] lg:max-h-[calc(60vh-100px)]">
             <CardContent className="space-y-4 pt-4">
-                <Card className="hover:shadow-md transition-shadow">
-                    <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2"><Landmark className="w-5 h-5" /> Town Hall</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-muted-foreground">Manage your town's development and policies.</p>
-                    </CardContent>
-                    <CardFooter>
-                        <Button variant="outline" className="w-full" disabled>Coming Soon</Button>
-                    </CardFooter>
-                </Card>
-
-                <Card className="hover:shadow-md transition-shadow">
-                    <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2"><HomeIconLucide className="w-5 h-5" /> Housing</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                       <p className="text-sm text-muted-foreground mb-1">
-                         Increase the maximum number of Neitts you can house.
-                       </p>
-                       <p className="text-sm text-muted-foreground mb-2">
-                         Current Neitt Capacity: {ownedNeitts.length} / {maxNeittsAllowed}
-                       </p>
-                       <Button onClick={onBuildAdditionalHouse} disabled={currency < ADDITIONAL_HOUSE_COST} className="w-full mb-3">
-                           <Home className="w-4 h-4 mr-2"/>Expand Housing (<Coins className="inline w-3 h-3 mr-0.5" />{ADDITIONAL_HOUSE_COST})
-                       </Button>
-                       {ownedNeitts.length < maxNeittsAllowed && NEITTS_DATA.length > 0 && (
-                         <div>
-                           <div className="flex items-center justify-between mb-1">
-                             <span className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                               <Hourglass className="w-4 h-4" /> Next Neitt arriving in:
-                             </span>
-                             <span className="text-sm font-semibold">{formatTime(neittTimeRemaining)}</span>
-                           </div>
-                           <Progress value={neittArrivalProgress} className="w-full h-3" />
-                         </div>
-                       )}
-                       {ownedNeitts.length >= maxNeittsAllowed && (
-                          <p className="text-sm text-green-600 text-center font-semibold">Housing at maximum capacity!</p>
-                       )}
-                       {NEITTS_DATA.length === 0 && ownedNeitts.length < maxNeittsAllowed && (
-                          <p className="text-sm text-orange-600 text-center font-semibold">No Neitt types available to arrive.</p>
-                       )}
-                    </CardContent>
-                </Card>
-
-                <Card className="hover:shadow-md transition-shadow">
-                    <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2"><FactoryIcon className="w-5 h-5" /> Production Buildings</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div>
-                            <h4 className="text-md font-semibold mb-2">Available to Build:</h4>
-                            {productionBuildingTypesData.map(buildingType => (
-                                <Card key={buildingType.id} className="mb-2 p-3 bg-secondary/20">
-                                    <div className="flex justify-between items-center">
-                                        <div>
-                                            <p className="font-semibold">{buildingType.name}</p>
-                                            <p className="text-xs text-muted-foreground">{buildingType.description}</p>
-                                            <p className="text-xs text-muted-foreground">Capacity: {buildingType.capacity} Neitts</p>
-                                        </div>
-                                        <Button
-                                            size="sm"
-                                            onClick={() => onBuildProductionBuilding(buildingType.id)}
-                                            disabled={currency < buildingType.cost}
-                                        >
-                                            Build (<Coins className="inline w-3 h-3 mr-0.5" />{buildingType.cost})
-                                        </Button>
-                                    </div>
-                                </Card>
-                            ))}
-                        </div>
-                        <Separator/>
-                        <div>
-                            <h4 className="text-md font-semibold mb-2">Your Buildings:</h4>
-                            {ownedProductionBuildings.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">You haven't built any production buildings yet.</p>
-                            ) : (
-                                ownedProductionBuildings.map(building => {
-                                    const buildingType = getBuildingTypeById(building.typeId);
-                                    if (!buildingType) return null;
-
-                                    const productionProgress = building.lastProductionCycleTime && building.assignedNeittInstanceIds.length > 0 && FACTORY_PRODUCTION_DURATION > 0
-                                      ? Math.min(100, ((Date.now() - building.lastProductionCycleTime) / FACTORY_PRODUCTION_DURATION) * 100)
-                                      : 0;
-                                    
-                                    const canAddNeitt = building.assignedNeittInstanceIds.length < buildingType.capacity && unassignedNeittsCount > 0;
-                                    const canRemoveNeitt = building.assignedNeittInstanceIds.length > 0;
-
-                                    return (
-                                    <Card key={building.instanceId} className="mb-3 p-4 bg-secondary/30">
-                                        <CardTitle className="text-md mb-1">{building.name} ({buildingType.name})</CardTitle>
-                                        <p className="text-xs text-muted-foreground mb-2">
-                                            Assigned Neitts: {building.assignedNeittInstanceIds.length} / {buildingType.capacity}
-                                        </p>
-                                        {building.assignedNeittInstanceIds.length > 0 && buildingType.id === 'factory_basic' && (
-                                            <div className="my-2">
-                                                <p className="text-xs text-muted-foreground">Producing Gold...</p>
-                                                <Progress value={productionProgress} className="h-2 w-full mt-1" />
-                                                <p className="text-xs text-muted-foreground text-right">
-                                                    {FACTORY_GOLD_PER_NEITT_PER_CYCLE * building.assignedNeittInstanceIds.length} Gold / Cycle
-                                                </p>
-                                            </div>
-                                        )}
-                                        <div className="space-y-1 mb-2">
-                                            {building.assignedNeittInstanceIds.map(neittId => {
-                                                const assignedNeitt = ownedNeitts.find(n => n.instanceId === neittId);
-                                                const assignedNeittType = assignedNeitt ? getNeittTypeById(assignedNeitt.neittTypeId) : undefined;
-                                                return (
-                                                    <div key={neittId} className="flex justify-between items-center text-sm bg-background/30 p-1 rounded">
-                                                        <span>- {assignedNeittType?.name || 'Unknown Neitt'}</span>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                        {buildingType.id === 'factory_basic' && (
-                                            <div className="flex gap-2 mt-2">
-                                                <Button 
-                                                    size="sm" 
-                                                    variant="outline" 
-                                                    className="flex-1 text-xs h-8"
-                                                    onClick={() => onAddNeittToFactory(building.instanceId)}
-                                                    disabled={!canAddNeitt}
-                                                    title={!canAddNeitt ? (building.assignedNeittInstanceIds.length >= buildingType.capacity ? "Factory full" : "No unassigned Neitts") : "Assign Neitt"}
-                                                >
-                                                    <PlusCircle className="w-4 h-4 mr-1"/> Add Neitt
-                                                </Button>
-                                                <Button 
-                                                    size="sm" 
-                                                    variant="outline" 
-                                                    className="flex-1 text-xs h-8"
-                                                    onClick={() => onRemoveNeittFromFactory(building.instanceId)}
-                                                    disabled={!canRemoveNeitt}
-                                                    title={!canRemoveNeitt ? "No Neitts to remove" : "Remove Neitt"}
-                                                >
-                                                   <MinusCircle className="w-4 h-4 mr-1"/> Remove Neitt
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </Card>
-                                    );
-                                })
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="hover:shadow-md transition-shadow">
-                    <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2"><ShoppingCart className="w-5 h-5" /> General Store</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-muted-foreground">Stock up on supplies or find rare items.</p>
-                    </CardContent>
-                    <CardFooter>
-                        <Button variant="outline" className="w-full" disabled>Coming Soon</Button>
-                    </CardFooter>
-                </Card>
-
                 <Separator className="my-6"/>
 
                 <CardTitle className="text-xl text-primary-foreground/80 flex items-center gap-2">
@@ -875,16 +716,17 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                           {ownedNeittInstance.nitsLeftToProduce > 0 && (
                              <Progress value={productionProgress} className="h-2 w-full mt-1 transition-all duration-100" />
                           )}
-                          <Button
-                            size="sm"
+
+ <Button
+ size="sm"
                             variant="outline"
                             className="mt-2 text-xs h-7"
-                            onClick={() => onFeedNeitt(ownedNeittInstance.instanceId)}
-                            disabled={feedButtonDisabled}
-                            title={buttonTitle}
-                          >
-                            <Bone className="w-3 h-3 mr-1" /> {feedButtonText}
-                          </Button>
+ onClick={() => onFeedNeitt(ownedNeittInstance.instanceId)}
+ disabled={feedButtonDisabled}
+ title={buttonTitle}
+ >
+ <Bone className="w-3 h-3 mr-1" /> {feedButtonText}
+ </Button>
                         </Card>
                       );
                     })}
@@ -897,7 +739,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
               <div>
                 <CardTitle className="text-xl text-primary-foreground/80 mb-2">Neitt Shop</CardTitle>
                 <CardDescription className="mb-4">Purchase new neitts to add to your farm. Max Neitts: {ownedNeitts.length} / {maxNeittsAllowed}</CardDescription>
-                <div className="flex items-center space-x-2 text-lg font-semibold mb-4">
+ <div className="flex items-center space-x-2 text-lg font-semibold mb-4">
                     <Coins className="h-5 w-5 text-primary" />
                     <span>Your Gold: {currency}</span>
                 </div>

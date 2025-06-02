@@ -106,7 +106,6 @@ export default function HarvestClickerPage() {
 
   const [isNightMode, setIsNightMode] = useState<boolean>(false);
 
-
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setIsClient(true);
@@ -549,6 +548,9 @@ export default function HarvestClickerPage() {
           currentLevel++;
           newXp -= xpNeededForNext;
           xpNeededForNext = calculateXpToNextLevel(currentLevel);
+          const levelUpSound = new Audio('/sounds/level_up.mp3'); // Předpokládá se, že soubor je v public/sounds
+          levelUpSound.play();
+
           setTimeout(() => toast({
             title: "Farm Level Up!",
             description: `Congratulations! Your farm reached level ${currentLevel}!`,
@@ -567,6 +569,8 @@ export default function HarvestClickerPage() {
   }, [toast, farmLevel, calculateXpToNextLevel, currentFarmId]);
 
   const handleSellCrop = useCallback((cropIdToSell: string, quantity: number) => {
+    const sellSound = new Audio('/sounds/placeholder_sell.mp3');
+    sellSound.play();
     const crop = CROPS_DATA.find(c => c.id === cropIdToSell);
     if (!crop) return;
 
@@ -602,6 +606,8 @@ export default function HarvestClickerPage() {
                 currentTraderLvl++;
                 newXp -= xpNeededForNext;
                 xpNeededForNext = calculateXpToNextLevel(currentTraderLvl);
+                const levelUpSound = new Audio('/sounds/level_up.mp3'); // Předpokládá se, že soubor je v public/sounds
+                levelUpSound.play();
                 setTimeout(() => toast({
                     title: "Trader Level Up!",
                     description: `Congratulations! Your Trader level reached ${currentTraderLvl}!`,
@@ -784,6 +790,8 @@ export default function HarvestClickerPage() {
           currentLevel++;
           newXp -= xpNeededForNext;
           xpNeededForNext = calculateXpToNextLevel(currentLevel);
+          const levelUpSound = new Audio('/sounds/level_up.mp3'); // Předpokládá se, že soubor je v public/sounds
+          levelUpSound.play();
           setTimeout(() => toast({
             title: "Neitt Slaver Level Up!",
             description: `Congratulations! Your Neitt Slaver level reached ${currentLevel}!`,
@@ -797,7 +805,10 @@ export default function HarvestClickerPage() {
   }, [toast, neittSlaverLevel, calculateXpToNextLevel, harvestedInventory]);
 
 
+
   const handleSellNit = useCallback((nitIdToSell: string, quantity: number) => {
+    const sellSound = new Audio('/sounds/placeholder_sell.mp3');
+    sellSound.play();
     const nitInfo = NITS_DATA.find(n => n.id === nitIdToSell);
     if (!nitInfo) {
         toast({ title: "Nit not found!", variant: "destructive" });
@@ -835,6 +846,9 @@ export default function HarvestClickerPage() {
             while (newXp >= xpNeededForNext) {
                 currentTraderLvl++;
                 newXp -= xpNeededForNext;
+                // Přidání přehrání zvuku zde
+                const levelUpSound = new Audio('/sounds/level_up.mp3'); // Předpokládá se, že soubor je v public/sounds
+                levelUpSound.play();
                 xpNeededForNext = calculateXpToNextLevel(currentTraderLvl);
                 setTimeout(() => toast({
                     title: "Trader Level Up!",

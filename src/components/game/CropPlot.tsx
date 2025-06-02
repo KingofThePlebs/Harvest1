@@ -93,7 +93,12 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
 
 
   const handlePlotClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    console.log('selectedSeedId:', selectedSeedId); // Přidáno logování
     if (isReadyToHarvest && plantedCrop) {
+      // Add code to play the harvest sound effect
+      const harvestSound = new Audio('/sounds/placeholder_harvest.mp3'); // Assuming sound file is in public/sounds
+      harvestSound.play();
+
       onHarvest(plot.id, plantedCrop.id);
       setShowHarvestEffect(true); // Trigger harvest animation
       setIsReadyToHarvest(false); // Reset harvest state
@@ -106,7 +111,13 @@ const CropPlot: FC<CropPlotProps> = ({ plot, onPlant, onHarvest, selectedSeedId,
       effectTimeoutRef.current = setTimeout(() => {
         setShowHarvestEffect(false);
       }, 300); // Duration of the harvest-effect animation
-    } else if (!plantedCrop && selectedSeedId) {
+    } else if (!plantedCrop && selectedSeedId) { // If plot is empty and a seed is selected
+      // Play plant sound effect
+      // Add explicit check to ensure sound plays only when a seed is truly selected
+      if (selectedSeedId) {
+        const plantSound = new Audio('/sounds/placeholder_plant.mp3'); // Assuming sound file is in public/sounds
+        plantSound.play();
+      }
       onPlant(plot.id);
     }
   };

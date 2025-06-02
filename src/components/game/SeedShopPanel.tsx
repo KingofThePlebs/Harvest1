@@ -54,7 +54,11 @@ const SeedShopPanel: FC<SeedShopPanelProps> = ({ onBuySeed, currency, getEffecti
                   variant="outline"
                   size="sm"
                   className="h-auto py-1 px-3 text-xs"
-                  onClick={() => onBuySeed(crop.id)}
+                  onClick={() => {
+ new Audio('/sounds/placeholder_buy.mp3').play();
+ onBuySeed(crop.id);
+                  }}
+
                   disabled={!canAfford}
                 >
                   Buy <Coins className="inline w-3 h-3 ml-1 mr-0.5" />{effectiveSeedPrice}
