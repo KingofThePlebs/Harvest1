@@ -410,6 +410,11 @@ export default function HarvestClickerPage() {
   }, [upgrades.fertilizer]);
 
   const handleBuySeed = useCallback((cropId: string) => {
+    console.log("handleBuySeed called for cropId:", cropId); // Log 1
+    console.log("Current ownedSeeds state (outside callback):", ownedSeeds); // Log 2
+
+
+
     const cropToBuy = CROPS_DATA.find(c => c.id === cropId);
     if (!cropToBuy) return;
 
@@ -426,15 +431,22 @@ export default function HarvestClickerPage() {
 
     setCurrency(prevCurrency => prevCurrency - effectiveSeedPrice);
     setTotalMoneySpent(prev => prev + effectiveSeedPrice);
+
     setOwnedSeeds(prevOwnedSeeds => {
+      console.log("Inside setOwnedSeeds callback - prevOwnedSeeds:", prevOwnedSeeds); // Log 3
       const existingSeedIndex = prevOwnedSeeds.findIndex(item => item.cropId === cropId);
+      const quantityToAdd = cropToBuy.seedsPerPurchase; // Use seedsPerPurchase
+      console.log("Quantity to add:", quantityToAdd); // Log 4
+
       if (existingSeedIndex > -1) {
+        console.log("Existing seed found. Current quantity:", prevOwnedSeeds[existingSeedIndex].quantity); // Log 5
         const updatedSeeds = [...prevOwnedSeeds];
-        updatedSeeds[existingSeedIndex].quantity += 1;
+        updatedSeeds[existingSeedIndex].quantity += quantityToAdd; // Add seedsPerPurchase
+        console.log("Quantity after adding:", updatedSeeds[existingSeedIndex].quantity); // Log 6
         return updatedSeeds;
       }
-      return [...prevOwnedSeeds, { cropId, quantity: 1 }];
-    });
+      return [...prevOwnedSeeds, { cropId, quantity: quantityToAdd }]; // Add seedsPerPurchase
+    });;
     toast({
       title: `${cropToBuy.name} Seed Purchased!`,
       description: `Paid ${effectiveSeedPrice} gold. It's now in your seed inventory.`,
