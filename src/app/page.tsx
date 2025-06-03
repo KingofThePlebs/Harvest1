@@ -38,14 +38,8 @@ const INITIAL_NEITT_SLAVER_XP = 0;
 const INITIAL_TRADER_LEVEL = 1;
 const INITIAL_TRADER_XP = 0;
 
-const INITIAL_MAX_NEITTS_ALLOWED = 2; 
-const ADDITIONAL_HOUSE_COST = 500; 
-
-const FACTORY_PRODUCTION_DURATION = 45 * 1000; 
-const FACTORY_GOLD_PER_NEITT_PER_CYCLE = 15;
-
-const NEITT_ARRIVAL_INTERVAL = 5 * 60 * 1000; // 5 minutes
-// const NEITT_ARRIVAL_INTERVAL = 15 * 1000; // For testing: 15 seconds
+const INITIAL_MAX_NEITTS_ALLOWED = 1; 
+const ADDITIONAL_HOUSE_COST = 250; 
 
 
 const generateInitialPlots = (count: number, farmId: string): PlotState[] => {
@@ -102,8 +96,6 @@ export default function HarvestClickerPage() {
   
   const [lastNeittArrivalTime, setLastNeittArrivalTime] = useState<number>(0);
   const [neittArrivalProgress, setNeittArrivalProgress] = useState<number>(0);
-  const [neittTimeRemaining, setNeittTimeRemaining] = useState<number>(NEITT_ARRIVAL_INTERVAL);
-
   const [isNightMode, setIsNightMode] = useState<boolean>(false);
 
   useEffect(() => {
@@ -245,160 +237,6 @@ export default function HarvestClickerPage() {
     return () => clearInterval(questGenerationTimer);
   }, [isClient, lastQuestGenerationTime, generateNewQuests]);
 
-
-  useEffect(() => { // Nit Production by Neitts
-    if (!isClient) return;
-
-    const productionInterval = setInterval(() => {
-      const now = Date.now();
-      let neittStateChangedDuringTick = false;
-      const newlyProducedNitsThisTick = new Map<string, number>();
-
-      setOwnedNeitts(prevOwnedNeitts => {
-        const nextOwnedNeitts = prevOwnedNeitts.map(neittInstance => {
-          if (neittInstance.assignedToBuildingInstanceId) { 
-            return neittInstance;
-          }
-          if (neittInstance.nitsLeftToProduce <= 0) {
-            return neittInstance;
-          }
-
-          const neittType = NEITTS_DATA.find(nt => nt.id === neittInstance.neittTypeId);
-          if (!neittType) return neittInstance;
-
-          const elapsedTime = now - neittInstance.lastProductionCycleStartTime;
-
-          if (elapsedTime >= neittType.productionTime) {
-            const currentAmount = newlyProducedNitsThisTick.get(neittType.producesNitId) || 0;
-            newlyProducedNitsThisTick.set(neittType.producesNitId, currentAmount + 1);
-
-            neittStateChangedDuringTick = true;
-            const nitsNowLeft = neittInstance.nitsLeftToProduce - 1;
-
-            return {
-              ...neittInstance,
-              lastProductionCycleStartTime: nitsNowLeft > 0 ? now : neittInstance.lastProductionCycleStartTime,
-              nitsLeftToProduce: nitsNowLeft,
-            };
-          }
-          return neittInstance;
-        });
-        return neittStateChangedDuringTick ? nextOwnedNeitts : prevOwnedNeitts;
-      });
-
-      if (newlyProducedNitsThisTick.size > 0) {
-        setProducedNits(currentGlobalProducedNits => {
-          const updatedGlobalNits = [...currentGlobalProducedNits];
-          newlyProducedNitsThisTick.forEach((quantity, nitId) => {
-            const existingNitIndex = updatedGlobalNits.findIndex(n => n.nitId === nitId);
-            if (existingNitIndex > -1) {
-              updatedGlobalNits[existingNitIndex].quantity += quantity;
-            } else {
-              updatedGlobalNits.push({ nitId, quantity });
-            }
-          });
-          return updatedGlobalNits.filter(n => n.quantity > 0);
-        });
-      }
-    }, 1000);
-
-    return () => clearInterval(productionInterval);
-  }, [isClient]);
-
-  useEffect(() => { // Factory Production (Gold)
-    if (!isClient || FACTORY_PRODUCTION_DURATION <= 0) return;
-  
-    const factoryProductionTimer = setInterval(() => {
-      const now = Date.now();
-      let totalGoldEarnedThisTick = 0;
-      const completedFactoriesDetails: { name: string, gold: number }[] = [];
-  
-      const updatedBuildings = ownedProductionBuildings.map(building => {
-        const buildingType = PRODUCTION_BUILDING_TYPES_DATA.find(bt => bt.id === building.typeId);
-        if (!buildingType || buildingType.id !== 'factory_basic' || building.assignedNeittInstanceIds.length === 0) {
-          return building;
-        }
-  
-        const startTime = building.lastProductionCycleTime || now;
-        const elapsedTime = now - startTime;
-  
-        if (elapsedTime >= FACTORY_PRODUCTION_DURATION) {
-          const goldEarnedForThisBuilding = FACTORY_GOLD_PER_NEITT_PER_CYCLE * building.assignedNeittInstanceIds.length;
-          totalGoldEarnedThisTick += goldEarnedForThisBuilding;
-          completedFactoriesDetails.push({ name: building.name, gold: goldEarnedForThisBuilding });
-  
-          return {
-            ...building,
-            lastProductionCycleTime: now,
-          };
-        }
-        return building;
-      });
-  
-      if (totalGoldEarnedThisTick > 0) {
-        setCurrency(prev => prev + totalGoldEarnedThisTick);
-        setOwnedProductionBuildings(updatedBuildings); 
-        
-        completedFactoriesDetails.forEach(detail => {
-          toast({ 
-            title: `${detail.name} Production Complete!`, 
-            description: `Earned ${detail.gold} gold.` 
-          });
-        });
-      }
-    }, 1000); 
-  
-    return () => clearInterval(factoryProductionTimer);
-  }, [isClient, ownedProductionBuildings, toast]);
-
-  useEffect(() => { // Neitt Arrival Timer
-    if (!isClient) return;
-
-    if (ownedNeitts.length >= maxNeittsAllowed) {
-      setNeittArrivalProgress(0);
-      setNeittTimeRemaining(NEITT_ARRIVAL_INTERVAL);
-      return;
-    }
-
-    const timer = setInterval(() => {
-      const now = Date.now();
-      if (lastNeittArrivalTime === 0) { 
-          setLastNeittArrivalTime(now); 
-          return;
-      }
-
-      const elapsedTime = now - lastNeittArrivalTime;
-      
-      if (elapsedTime >= NEITT_ARRIVAL_INTERVAL) {
-        if (ownedNeitts.length < maxNeittsAllowed) {
-          const defaultNeittType = NEITTS_DATA[0]; 
-          if (defaultNeittType) {
-            const newNeittInstance: OwnedNeitt = {
-              instanceId: self.crypto.randomUUID(),
-              neittTypeId: defaultNeittType.id,
-              lastProductionCycleStartTime: 0,
-              nitsLeftToProduce: 0,
-              initialNitsForCycle: 0,
-              assignedToBuildingInstanceId: null,
-            };
-            setOwnedNeitts(prev => [...prev, newNeittInstance]);
-            toast({
-              title: "A New Neitt Arrived!",
-              description: `A ${defaultNeittType.name} has joined your settlement.`,
-            });
-          }
-        }
-        setLastNeittArrivalTime(now);
-        setNeittArrivalProgress(0);
-        setNeittTimeRemaining(NEITT_ARRIVAL_INTERVAL);
-      } else {
-        setNeittArrivalProgress((elapsedTime / NEITT_ARRIVAL_INTERVAL) * 100);
-        setNeittTimeRemaining(NEITT_ARRIVAL_INTERVAL - elapsedTime);
-      }
-    }, 1000); 
-
-    return () => clearInterval(timer);
-  }, [isClient, ownedNeitts.length, maxNeittsAllowed, lastNeittArrivalTime, toast]);
 
 
   const getEffectiveCropSeedPrice = useCallback((basePrice: number) => {
@@ -1115,7 +953,7 @@ export default function HarvestClickerPage() {
     setOwnedProductionBuildings([]); 
     setLastNeittArrivalTime(Date.now()); 
     setNeittArrivalProgress(0);
-    setNeittTimeRemaining(NEITT_ARRIVAL_INTERVAL);
+  
 
     if (showToast) {
       toast({
@@ -1445,8 +1283,6 @@ export default function HarvestClickerPage() {
             onBuildAdditionalHouse={handleBuildAdditionalHouse}
             ADDITIONAL_HOUSE_COST={ADDITIONAL_HOUSE_COST}
             neittArrivalProgress={neittArrivalProgress}
-            neittTimeRemaining={neittTimeRemaining}
-            NEITT_ARRIVAL_INTERVAL={NEITT_ARRIVAL_INTERVAL}
 
 
             productionBuildingTypesData={PRODUCTION_BUILDING_TYPES_DATA}
@@ -1454,8 +1290,7 @@ export default function HarvestClickerPage() {
             onBuildProductionBuilding={handleBuildProductionBuilding}
             onAddNeittToFactory={handleAddNeittToFactory}
             onRemoveNeittFromFactory={handleRemoveNeittFromFactory}
-            FACTORY_PRODUCTION_DURATION={FACTORY_PRODUCTION_DURATION}
-            FACTORY_GOLD_PER_NEITT_PER_CYCLE={FACTORY_GOLD_PER_NEITT_PER_CYCLE}
+           
           />
         </div>
         <div className="pt-4 text-center space-y-2 sm:space-y-0 sm:flex sm:justify-center sm:space-x-2">

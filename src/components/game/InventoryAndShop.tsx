@@ -76,6 +76,7 @@ interface InventoryAndShopProps {
   ADDITIONAL_HOUSE_COST: number;
   neittArrivalProgress: number;
   neittTimeRemaining: number;
+  neittLimitUpgradeCost: number;
   NEITT_ARRIVAL_INTERVAL: number;
 
 
@@ -138,6 +139,7 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
   onBuildAdditionalHouse,
   ADDITIONAL_HOUSE_COST,
   neittArrivalProgress,
+  neittLimitUpgradeCost,
   neittTimeRemaining,
   NEITT_ARRIVAL_INTERVAL,
   productionBuildingTypesData,
@@ -735,10 +737,17 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
               </div>
 
               <Separator className="my-6 border-border/50" />
-
+              
               <div>
                 <CardTitle className="text-xl text-primary-foreground/80 mb-2">Neitt Shop</CardTitle>
-                <CardDescription className="mb-4">Purchase new neitts to add to your farm. Max Neitts: {ownedNeitts.length} / {maxNeittsAllowed}</CardDescription>
+                <div className="flex items-center mb-4">
+                  <CardDescription className="flex-grow mb-0">Purchase new neitts to add to your farm. Max Neitts: {ownedNeitts.length} / {maxNeittsAllowed}</CardDescription>
+                  <Button size="sm" variant="outline" className="text-xs h-7 px-2 ml-2" onClick={onBuildAdditionalHouse} disabled={currency < neittLimitUpgradeCost}>
+                    <PlusCircle className="w-3 h-3 mr-1" />
+                    Limit: <Coins className="inline w-3 h-3 mr-0.5" />{neittLimitUpgradeCost}
+                  </Button>
+                </div>
+
  <div className="flex items-center space-x-2 text-lg font-semibold mb-4">
                     <Coins className="h-5 w-5 text-primary" />
                     <span>Your Gold: {currency}</span>
