@@ -20,6 +20,24 @@ import potatoPlot3Img from '@/images/crops/potato/plant3.png';
 import potatoPlot4Img from '@/images/crops/potato/plant4.png';
 import potatoPlot5Img from '@/images/crops/potato/plant5.png';
 
+// --- Tomato Images ---
+import tomatoSeedImg from '@/images/crops/tomato/seed.png';
+import tomatoHarvestedImg from '@/images/crops/tomato/harvested.png';
+import tomatoPlot1Img from '@/images/crops/tomato/plant1.png';
+import tomatoPlot2Img from '@/images/crops/tomato/plant2.png';
+import tomatoPlot3Img from '@/images/crops/tomato/plant3.png';
+import tomatoPlot4Img from '@/images/crops/tomato/plant4.png';
+import tomatoPlot5Img from '@/images/crops/tomato/plant5.png';
+
+// --- Wheat Images ---
+import wheatSeedImg from '@/images/crops/wheat/seed.png';
+import wheatHarvestedImg from '@/images/crops/wheat/harvested.png';
+import wheatPlot1Img from '@/images/crops/wheat/plant1.png';
+import wheatPlot2Img from '@/images/crops/wheat/plant2.png';
+import wheatPlot3Img from '@/images/crops/wheat/plant3.png';
+import wheatPlot4Img from '@/images/crops/wheat/plant4.png';
+import wheatPlot5Img from '@/images/crops/wheat/plant5.png';
+
 
 export const CROPS_DATA: Crop[] = [
   // All other crop objects have been removed.
@@ -72,4 +90,51 @@ export const CROPS_DATA: Crop[] = [
     minFarmLevelForQuest: 1,
     dataAiHintFarmPlot: 'potato plant',
   },
+  {
+    id: 'tomato',
+    name: 'Tomato',
+    growTime: 12 * 1000, // 12 seconds
+    sellPrice: 8,
+    seedPrice: 5,
+    icon: Carrot, // Replace with a Tomato icon if available
+    xpYield: 20, // Tomatoes give 20 XP per harvest
+    seedShopImageUrl: tomatoSeedImg,
+    dataAiHintSeedShop: 'tomato seedpacket',
+    harvestedCropImageUrl: tomatoHarvestedImg,
+    dataAiHintHarvestedCrop: 'tomato vegetable',
+    farmPlotImageUrls: [
+      tomatoPlot1Img,
+      tomatoPlot2Img,
+      tomatoPlot3Img,
+      tomatoPlot4Img,
+      tomatoPlot5Img,
+    ],
+    tier: 2, // Assuming tomato is a higher tier crop
+    seedsPerPurchase: 0.5,
+    minFarmLevelForQuest: 5, // Requires a higher farm level
+    dataAiHintFarmPlot: 'tomato plant',
+  },
+  {
+    id: 'wheat',
+    name: 'Wheat',
+    growTime: 15 * 1000, // 7 seconds
+    sellPrice: 12,
+    seedPrice: 10,
+    icon: Carrot, // Replace with a Wheat icon if available
+    xpYield: 12, // Wheat gives 12 XP per harvest
+    seedShopImageUrl: wheatSeedImg,
+    dataAiHintSeedShop: 'wheat seedpacket',
+    harvestedCropImageUrl: wheatHarvestedImg,
+    dataAiHintHarvestedCrop: 'wheat grain',
+    farmPlotImageUrls: [
+      wheatPlot1Img,
+      wheatPlot2Img,
+      wheatPlot3Img,
+      wheatPlot4Img,
+      wheatPlot5Img,
+    ],
+    tier: 1,
+    seedsPerPurchase: 0.5,
+    minFarmLevelForQuest: 1,
+    dataAiHintFarmPlot: 'wheat plant',},
 ].sort((a, b) => a.seedPrice - b.seedPrice);
