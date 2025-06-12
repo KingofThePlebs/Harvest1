@@ -163,8 +163,31 @@ export default function HarvestClickerPage() {
 
 
   const getEffectiveCropSellPrice = useCallback((basePrice: number) => {
-    return upgrades.negotiationSkills ? Math.floor(basePrice * 1.15) : basePrice;
-  }, [upgrades.negotiationSkills]);
+     if (upgrades.traderCharm10) {
+      return basePrice * 0.5;
+    } else if (upgrades.traderCharm9) {
+      return basePrice * 0.5;
+    } else if (upgrades.traderCharm8) {
+      return basePrice * 0.5;
+    } else if (upgrades.traderCharm7) {
+      return basePrice * 0.5;
+    } else if (upgrades.traderCharm6) {
+      return basePrice * 0.5;
+    } else if (upgrades.traderCharm5) {
+      return basePrice * 0.5;
+    } else if (upgrades.traderCharm4) {
+      return basePrice * 0.5;
+    } else if (upgrades.traderCharm3) {
+      return basePrice * 3;
+    } else if (upgrades.traderCharm2) {
+      return basePrice * 1.5; 
+    } else if (upgrades.traderCharm) {
+      return basePrice * 1.5; 
+    } else {
+      return basePrice;
+    }
+    
+  }, [upgrades.traderCharm]);
 
   const generateNewQuests = useCallback(() => {
     const numberOfQuestsToGenerate = Math.floor(Math.random() * 3) + 1;
@@ -240,11 +263,56 @@ export default function HarvestClickerPage() {
 
 
   const getEffectiveCropSeedPrice = useCallback((basePrice: number) => {
-    return upgrades.bulkDiscount ? Math.ceil(basePrice * 0.9) : basePrice;
-  }, [upgrades.bulkDiscount]);
+    let effectivePrice = basePrice;
+    if (upgrades.cheapSeed5) {
+    effectivePrice = basePrice * 0.75;
+    } else if (upgrades.cheapSeed4) {
+    effectivePrice = basePrice * 0.80;
+    } else if (upgrades.cheapSeed3) {
+    effectivePrice = basePrice * 0.85;
+    } else if (upgrades.cheapSeed2) {
+    effectivePrice = basePrice * 0.90;
+    } else if (upgrades.cheapSeed) {
+      effectivePrice = basePrice * 0.95;
+    }
+
+    // Round down to the nearest whole number
+ let roundedPrice = Math.floor(effectivePrice);
+
+    // Ensure the price is not zero
+    if (roundedPrice <= 0) {
+      roundedPrice = 1;
+    }
+  return roundedPrice;
+  
+
+
+  }, [upgrades.cheapSeed]);
 
   const getEffectiveCropGrowTime = useCallback((baseTime: number) => {
-    return upgrades.fertilizer ? baseTime * 0.8 : baseTime;
+    if (upgrades.fertilizer10) {
+ return baseTime * 0.5;
+    } else if (upgrades.fertilizer9) {
+ return baseTime * 0.5;
+    } else if (upgrades.fertilizer8) {
+ return baseTime * 0.5;
+    } else if (upgrades.fertilizer7) {
+ return baseTime * 0.5;
+    } else if (upgrades.fertilizer6) {
+ return baseTime * 0.5;
+    } else if (upgrades.fertilizer5) {
+ return baseTime * 0.5;
+    } else if (upgrades.fertilizer4) {
+ return baseTime * 0.5;
+    } else if (upgrades.fertilizer3) {
+ return baseTime * 0.2;
+    } else if (upgrades.fertilizer2) {
+ return baseTime * 0.5; // 24% faster (1 - 0.24)
+    } else if (upgrades.fertilizer) {
+      return baseTime * 0.8; // 20% faster
+    } else {
+      return baseTime;
+    }
   }, [upgrades.fertilizer]);
 
   const handleBuySeed = useCallback((cropId: string) => {

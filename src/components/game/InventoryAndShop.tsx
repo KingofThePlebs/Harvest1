@@ -528,6 +528,14 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
             <CardContent className="space-y-4 pt-4">
               <CardTitle className="text-xl text-primary-foreground/80">Farm Upgrades</CardTitle>
               <CardDescription>Purchase upgrades to improve your farm.</CardDescription>
+ {typeof window !== 'undefined' && (
+ <Button
+ variant="outline"
+ className="mt-2 text-xs h-8 w-full"
+ onClick={() => window.location.reload()}
+ >Some upgrades take effect only after reloading page.</Button>
+ )}
+
               <div className="flex items-center space-x-2 text-lg font-semibold mb-4">
                   <Coins className="h-5 w-5 text-primary" />
                   <span>Your Gold: {currency}</span>
@@ -540,7 +548,13 @@ const InventoryAndShop: FC<InventoryAndShopProps> = ({
                   return (
                     <li key={upgrade.id} className="flex items-center justify-between p-3 bg-secondary/30 rounded-md shadow-sm hover:bg-secondary/50">
                       <div className="flex items-center space-x-3">
-                        <UpgradeIcon className="w-8 h-8 text-blue-500 flex-shrink-0" />
+                        {upgrade.icon && typeof upgrade.icon === 'object' && 'src' in upgrade.icon ? (
+                          <img src={upgrade.icon.src} alt={upgrade.name} className="w-8 h-8 text-blue-500 flex-shrink-0 object-contain" />
+                        ) : UpgradeIcon ? (
+                          <UpgradeIcon className="w-8 h-8 text-blue-500 flex-shrink-0" />
+                        ) : (
+                          <TrendingUp className="w-8 h-8 text-blue-500 flex-shrink-0" />
+                        )}
                         <div className="flex-grow">
                           <p className="font-semibold">{upgrade.name}</p>
                           <p className="text-xs text-muted-foreground">{upgrade.description}</p>
