@@ -6,6 +6,7 @@ import { Droplets, Award, Tag, LandPlot, PlusSquare } from 'lucide-react';
 import CheapSeedImage from '../images/upgrades/CheapSeed.png';
 import FertilizerImage from '../images/upgrades/Fertilizer.png';
 import TraderCharmImage from '../images/upgrades/TraderCharm.png';
+import BiggerFarm from '../images/upgrades/FarmUp.png';
 
 export const UPGRADES_DATA: UpgradeDefinition[] = [
 
@@ -213,7 +214,7 @@ export const UPGRADES_DATA: UpgradeDefinition[] = [
     name: 'Unlock Farm 2',
     description: 'Unlocks a new farm area with 6 plots.',
     cost: 500, 
-    icon: LandPlot,
+    icon: BiggerFarm,
     isUnlocked: (upgrades) => !upgrades.unlockFarm2, 
   },
   {
@@ -221,7 +222,7 @@ export const UPGRADES_DATA: UpgradeDefinition[] = [
     name: 'Unlock Farm 3',
     description: 'Unlocks another new farm area with 6 plots.',
     cost: 2000, 
-    icon: PlusSquare,
+    icon: BiggerFarm,
     isUnlocked: (upgrades) => upgrades.unlockFarm2 && !upgrades.unlockFarm3, 
   },
 ];

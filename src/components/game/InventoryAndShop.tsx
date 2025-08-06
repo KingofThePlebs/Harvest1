@@ -95,7 +95,6 @@ const tabDefinitions: TabDefinition[] = [
   { id: 'sellMarket', label: 'Sell Market', icon: Handshake },
   { id: 'upgrades', label: 'Upgrades', icon: TrendingUp },
   { id: 'town', label: 'Town', icon: Building },
-  { id: 'neittFarm', label: 'Neitt Farm', icon: NeittIconLucide },
 ];
 
 const InventoryAndShop: FC<InventoryAndShopProps> = ({
